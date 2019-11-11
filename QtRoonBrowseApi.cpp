@@ -4,6 +4,12 @@
 QtRoonBrowseApi::BrowseInput::BrowseInput() :
 	is_password(false)
 {}
+QtRoonBrowseApi::BrowseInput::BrowseInput(const BrowseInput& other) :
+    prompt(other.prompt),
+    action(other.action),
+    value(other.value),
+    is_password(other.is_password)
+{}
 QtRoonBrowseApi::BrowseInput::BrowseInput(const QVariantMap& map) {
 	prompt = map["prompt"].toString();
 	action = map["action"].toString();
@@ -15,6 +21,7 @@ QtRoonBrowseApi::BrowseItem::BrowseItem() :
 {}
 QtRoonBrowseApi::BrowseItem::~BrowseItem() {
     if (input_prompt != nullptr) delete input_prompt;
+    input_prompt = nullptr;
 }
 QtRoonBrowseApi::BrowseItem::BrowseItem(const BrowseItem& other) :
 	title(other.title),
@@ -22,7 +29,7 @@ QtRoonBrowseApi::BrowseItem::BrowseItem(const BrowseItem& other) :
 	item_key(other.item_key),
 	image_key(other.image_key),
 	hint(other.hint),
-    input_prompt(other.input_prompt == nullptr ? nullptr : other.input_prompt)
+    input_prompt(other.input_prompt == nullptr ? nullptr : new BrowseInput(*other.input_prompt))
 {}
 QtRoonBrowseApi::BrowseItem::BrowseItem(const QVariantMap& map) {
 	title = map["title"].toString();
@@ -41,7 +48,7 @@ QtRoonBrowseApi::BrowseItem& QtRoonBrowseApi::BrowseItem::operator= (const QtRoo
     item_key = other.item_key;
     image_key = other.image_key;
     hint = other.hint;
-    input_prompt = other.input_prompt == nullptr ? nullptr : other.input_prompt;
+    input_prompt = other.input_prompt == nullptr ? nullptr : new BrowseInput(*other.input_prompt);
     return *this;
 }
 

@@ -8,7 +8,8 @@ class QtRoonBrowseApi : public QObject, public IRoonCallback
 public:
 	struct BrowseInput {
 		BrowseInput();
-		BrowseInput(const QVariantMap& map);
+        BrowseInput(const BrowseInput& other);
+        BrowseInput(const QVariantMap& map);
 		QString			prompt;
 		QString			action;
 		QString			value;
