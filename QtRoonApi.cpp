@@ -44,16 +44,16 @@ void RoonCore::fromVariant(const QVariantMap& map) {
 
 QT_USE_NAMESPACE
 
-QString QtRoonApi::ServiceRegistry	= "com.roonlabs.registry:1";
+QString QtRoonApi::ServiceRegistry  = "com.roonlabs.registry:1";
 QString QtRoonApi::ServiceTransport = "com.roonlabs.transport:2";		// support for zones_seek_changed
-QString QtRoonApi::ServiceStatus	= "com.roonlabs.status:1";
-QString QtRoonApi::ServicePairing	= "com.roonlabs.pairing:1";
-QString QtRoonApi::ServicePing		= "com.roonlabs.ping:1";
-QString QtRoonApi::ServiceImage		= "com.roonlabs.image:1";
-QString QtRoonApi::ServiceBrowse	= "com.roonlabs.browse:1";
-QString QtRoonApi::ServiceSettings	= "com.roonlabs.settings:1";
-QString QtRoonApi::ControlVolume	= "com.roonlabs.volumecontrol:1";
-QString QtRoonApi::ControlSource	= "com.roonlabs.sourcecontrol:1";
+QString QtRoonApi::ServiceStatus    = "com.roonlabs.status:1";
+QString QtRoonApi::ServicePairing   = "com.roonlabs.pairing:1";
+QString QtRoonApi::ServicePing      = "com.roonlabs.ping:1";
+QString QtRoonApi::ServiceImage     = "com.roonlabs.image:1";
+QString QtRoonApi::ServiceBrowse    = "com.roonlabs.browse:1";
+QString QtRoonApi::ServiceSettings  = "com.roonlabs.settings:1";
+QString QtRoonApi::ControlVolume    = "com.roonlabs.volumecontrol:1";
+QString QtRoonApi::ControlSource    = "com.roonlabs.sourcecontrol:1";
 
 QString QtRoonApi::MessageRequest	= "REQUEST";
 QString QtRoonApi::MessageComplete	= "COMPLETE";
