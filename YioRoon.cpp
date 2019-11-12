@@ -34,9 +34,9 @@ YioRoon* YioRoon::_instance = nullptr;
 
 YioRoon::YioRoon(QObject* parent) :
     _roonApi("ws://192.168.1.100:9100/api", "C:\\Temp\\", _reg, _log),
-	_browseApi(_roonApi),
-	_transportApi(_roonApi, transportCallback),
-	_numItems(50),
+    _browseApi(_roonApi),
+    _transportApi(_roonApi, transportCallback),
+    _numItems(50),
     _requestId(0),
     _items(nullptr)
 {
@@ -54,23 +54,23 @@ YioRoon::YioRoon(QObject* parent) :
     _actions.append(Action ("TIDAL",            "", ACT_REJECT, ACT_NONE));
     _actions.append(Action ("Settings",         "", ACT_REJECT, ACT_NONE));
 
-	_reg.display_name = "YIO Roon Control";
-	_reg.display_version = "1.1";
-	_reg.email = "ric@rts.co.at";
-	_reg.extension_id = "com.roon.yiocontrol";
-	_reg.publisher = "Christian Riedl";
-	_reg.token = "";
-	_reg.website = "https://www.christian-riedl.com";
-	_reg.provided_services.append(QtRoonApi::ServicePairing);
-	_reg.required_services.append(QtRoonApi::ServiceBrowse);
-	_reg.required_services.append(QtRoonApi::ServiceTransport);
-	//_reg.required_services.append(QtRoonApi::ServiceImage);
-	//_reg.provided_services.append(QtRoonApi::ServicePing);
-	_reg.paired = this;
+    _reg.display_name = "YIO Roon Control";
+    _reg.display_version = "1.1";
+    _reg.email = "ric@rts.co.at";
+    _reg.extension_id = "com.roon.yiocontrol";
+    _reg.publisher = "Christian Riedl";
+    _reg.token = "";
+    _reg.website = "https://www.christian-riedl.com";
+    _reg.provided_services.append(QtRoonApi::ServicePairing);
+    _reg.required_services.append(QtRoonApi::ServiceBrowse);
+    _reg.required_services.append(QtRoonApi::ServiceTransport);
+    //_reg.required_services.append(QtRoonApi::ServiceImage);
+    //_reg.provided_services.append(QtRoonApi::ServicePing);
+    _reg.paired = this;
 
     QObject::connect(&_transportApi, &QtRoonTransportApi::zonesChanged, this, &YioRoon::onZonesChanged);
     QObject::connect(&_transportApi, &QtRoonTransportApi::zoneSeekChanged, this, &YioRoon::onZoneSeekChanged);
-	_instance = this;
+    _instance = this;
 }
 YioRoon::~YioRoon()
 {
@@ -135,7 +135,7 @@ void YioRoon::connect()
         }
         _items = new QList<QtRoonBrowseApi::BrowseItem> [static_cast<size_t>(list.length())];
     }
-	_roonApi.open();
+    _roonApi.open();
 }
 void YioRoon::disconnect()
 {
@@ -241,23 +241,23 @@ void YioRoon::stateHandler(int state)
 
 void YioRoon::browse(const QString& zoneId, bool fromTop)
 {
-	QtRoonBrowseApi::BrowseOption opt;
+    QtRoonBrowseApi::BrowseOption opt;
     opt.zone_or_output_id = zoneId;
-	if (fromTop)
-		opt.pop_all = true;
-	opt.set_display_offset = 0;
-	_requestId = _browseApi.browse(opt, browseCallback);
+    if (fromTop)
+        opt.pop_all = true;
+    opt.set_display_offset = 0;
+    _requestId = _browseApi.browse(opt, browseCallback);
 }
 void YioRoon::browse(const QString& zoneId, const QList<QtRoonBrowseApi::BrowseItem>& items, int itemIndex, bool action)
 {
     if (itemIndex < items.count()) {
-		QtRoonBrowseApi::BrowseOption opt;
+        QtRoonBrowseApi::BrowseOption opt;
         opt.zone_or_output_id = zoneId;
         opt.item_key = items[itemIndex].item_key;
         if (!action)
             opt.set_display_offset = 0;
-		_requestId = _browseApi.browse(opt, browseCallback);
-	}
+        _requestId = _browseApi.browse(opt, browseCallback);
+    }
 }
 void YioRoon::browseAction(const QString& zoneId, const QString& item_key)
 {
@@ -268,24 +268,24 @@ void YioRoon::browseAction(const QString& zoneId, const QString& item_key)
 }
 void YioRoon::browseBack (const QString& zoneId)
 {
-	QtRoonBrowseApi::BrowseOption opt;
+    QtRoonBrowseApi::BrowseOption opt;
     opt.zone_or_output_id = zoneId;
-	opt.pop_levels = 1;
-	opt.set_display_offset = 0;
-	_requestId = _browseApi.browse(opt, browseCallback);
+    opt.pop_levels = 1;
+    opt.set_display_offset = 0;
+    _requestId = _browseApi.browse(opt, browseCallback);
 }
 void YioRoon::browseRefresh(const QString& zoneId)
 {
-	QtRoonBrowseApi::BrowseOption opt;
+    QtRoonBrowseApi::BrowseOption opt;
     opt.zone_or_output_id = zoneId;
-	opt.refresh_list = true;
-	opt.set_display_offset = 0;
-	_requestId = _browseApi.browse(opt, browseCallback);
+    opt.refresh_list = true;
+    opt.set_display_offset = 0;
+    _requestId = _browseApi.browse(opt, browseCallback);
 }
 
 void YioRoon::onZonesChanged()
 {
-	QMap<QString, QtRoonTransportApi::Zone>& zones = _transportApi.zones();
+    QMap<QString, QtRoonTransportApi::Zone>& zones = _transportApi.zones();
 
     for (QMap<QString, QtRoonTransportApi::Zone>::iterator i = zones.begin(); i != zones.end(); ++i) {
         const QtRoonTransportApi::Zone& zone = i.value();
@@ -327,7 +327,7 @@ void YioRoon::onZoneSeekChanged(const QtRoonTransportApi::Zone& zone)
 void YioRoon::OnPaired(const RoonCore& core)
 {
     Q_UNUSED(core)
-	_transportApi.subscribeZones();
+    _transportApi.subscribeZones();
 }
 
 void YioRoon::OnUnpaired(const RoonCore& core)
@@ -344,24 +344,24 @@ void YioRoon::loadCallback(int requestId, const QString& err, const QtRoonBrowse
 {
     Q_UNUSED(err)
     if (_instance != nullptr && _instance->_requestId == requestId) {
-		_instance->_requestId = 0;
+        _instance->_requestId = 0;
         _instance->updateItems(result);
-	}
+    }
 }
 void YioRoon::browseCallback(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result)
 {
     Q_UNUSED(err)
     if (_instance != nullptr && _instance->_requestId == requestId) {
-		_instance->_requestId = 0;
+        _instance->_requestId = 0;
         if (result.action == "list" && result.list != nullptr) {
-			int listoffset = result.list->display_offset > 0 ? result.list->display_offset : 0;
-			QtRoonBrowseApi::LoadOption opt;
-			opt.offset = listoffset;
-			opt.count = _instance->_numItems;
-			opt.set_display_offset = listoffset;
-			_instance->_requestId = _instance->_browseApi.load(opt, loadCallback);
-		}
-	}
+            int listoffset = result.list->display_offset > 0 ? result.list->display_offset : 0;
+                QtRoonBrowseApi::LoadOption opt;
+                opt.offset = listoffset;
+                opt.count = _instance->_numItems;
+                opt.set_display_offset = listoffset;
+                _instance->_requestId = _instance->_browseApi.load(opt, loadCallback);
+        }
+    }
 }
 void YioRoon::actionLoadCallback(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result)
 {

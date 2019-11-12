@@ -21,10 +21,10 @@ public:
 
 class YioRoon : public Integration, IRoonPaired
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-    explicit	YioRoon(QObject* parent = nullptr);
-                ~YioRoon() override;
+    explicit	YioRoon             (QObject* parent = nullptr);
+                ~YioRoon            () override;
 
     Q_INVOKABLE void setup  	    (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj);
     Q_INVOKABLE void connect	    ();
@@ -65,44 +65,44 @@ private:
          EAction    forcedActions;
     };
 
-    RoonRegister					_reg;
-    QtRoonApi						_roonApi;
-    QtRoonBrowseApi					_browseApi;
-    QtRoonTransportApi				_transportApi;
-    int								_numItems;
-    int								_requestId;
-    QString                         _url;
-    QString                         _imageUrl;
-    EntitiesInterface*              _entities;
-    QString                         _lastBrowseId;
-    QStringList                     _friendlyNames;
-    QStringList                     _entityIds;
-    QStringList                     _zoneIds;
-    QStringList                     _forcedActions;
-    QList<Action>                   _actions;
+    RoonRegister                        _reg;
+    QtRoonApi				_roonApi;
+    QtRoonBrowseApi			_browseApi;
+    QtRoonTransportApi			_transportApi;
+    int					_numItems;
+    int					_requestId;
+    QString                             _url;
+    QString                             _imageUrl;
+    EntitiesInterface*                  _entities;
+    QString                             _lastBrowseId;
+    QStringList                         _friendlyNames;
+    QStringList                         _entityIds;
+    QStringList                         _zoneIds;
+    QStringList                         _forcedActions;
+    QList<Action>                       _actions;
     QList<QtRoonBrowseApi::BrowseItem>* _items;
 
-    static YioRoon*                 _instance;
-    static QLoggingCategory         _log;
+    static YioRoon*                     _instance;
+    static QLoggingCategory             _log;
 
-	static void transportCallback	(int requestId, const QString& msg);
-	static void loadCallback		(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
-	static void browseCallback		(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result);
+    static void transportCallback	(int requestId, const QString& msg);
+    static void loadCallback		(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
+    static void browseCallback		(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result);
     static void actionLoadCallback	(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
-    static void actionBrowseCallback(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result);
+    static void actionBrowseCallback    (int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result);
 
-    void		browse              (const QString& zoneId, bool fromTop);
-    void		browse              (const QString& zoneId, const QList<QtRoonBrowseApi::BrowseItem>& items, int itemIndex, bool action);
-    void		browseAction        (const QString& zoneId, const QString& item_key);
-    void		browseBack          (const QString& zoneId);
-    void		browseRefresh       (const QString& zoneId);
+    void	browse                  (const QString& zoneId, bool fromTop);
+    void	browse                  (const QString& zoneId, const QList<QtRoonBrowseApi::BrowseItem>& items, int itemIndex, bool action);
+    void	browseAction            (const QString& zoneId, const QString& item_key);
+    void	browseBack              (const QString& zoneId);
+    void	browseRefresh           (const QString& zoneId);
 
-	virtual void OnPaired			(const RoonCore& core) override;
-	virtual void OnUnpaired			(const RoonCore& core) override;
+    virtual void OnPaired		(const RoonCore& core) override;
+    virtual void OnUnpaired		(const RoonCore& core) override;
 
-    void updateItems (const QtRoonBrowseApi::LoadResult& result);
-    void updateZone (const QString& id, const QtRoonTransportApi::Zone& zone, bool seekChanged);
-    const Action* getActionRoon (const QString& roonName);
-    const Action* getActionYio (const QString& yioName);
-    QStringList getForcedActions (EAction forcedActions);
+    void        updateItems             (const QtRoonBrowseApi::LoadResult& result);
+    void        updateZone              (const QString& id, const QtRoonTransportApi::Zone& zone, bool seekChanged);
+    const Action* getActionRoon         (const QString& roonName);
+    const Action* getActionYio          (const QString& yioName);
+    QStringList getForcedActions        (EAction forcedActions);
 };
