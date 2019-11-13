@@ -3,6 +3,7 @@
 #include "QtRoonApi.h"
 #include "QtRoonTransportApi.h" 
 #include "QtRoonBrowseApi.h" 
+#include "QtRoonDiscovery.h"
 #include "../remote-software/sources/integrations/integration.h"
 #include "../remote-software/sources/integrations/integrationinterface.h"
 
@@ -13,9 +14,20 @@ class Roon : public IntegrationInterface
     Q_INTERFACES(IntegrationInterface)
 
 public:
-    explicit Roon() {}
+    explicit Roon();
+    virtual ~Roon() override {
+    }
 
-    void create (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj) override;
+    void    create              (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj) override;
+
+public slots:
+    void    onRoonDiscovered    (QMap<QString, QVariantMap>);
+
+private:
+    QLoggingCategory    _log;
+    YioAPIInterface*    _api;
+    EntitiesInterface*  _entities;
+    QtRoonDiscovery     _discovery;
 };
 
 

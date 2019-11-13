@@ -6,10 +6,12 @@ DEFINES     += DEBUG
 include(../remote-software/qmake-target-platform.pri)
 include(../remote-software/qmake-destination-path.pri)
 
-HEADERS         = YioRoon.h QtRoonApi.h QtRoonBrowseApi.h QtRoonTransportApi.h QtRoonStatusApi.h \
+HEADERS         = YioRoon.h QtRoonApi.h QtRoonBrowseApi.h QtRoonTransportApi.h QtRoonStatusApi.h QtRoonDiscovery.h \
                   ../remote-software/sources/integrations/integration.h \
-                  ../remote-software/sources/integrations/integrationinterface.h
-SOURCES         = YioRoon.cpp QtRoonApi.cpp QtRoonBrowseApi.cpp QtRoonTransportApi.cpp QtRoonStatusApi.cpp
+                  ../remote-software/sources/integrations/integrationinterface.h \
+
+SOURCES         = YioRoon.cpp QtRoonApi.cpp QtRoonBrowseApi.cpp QtRoonTransportApi.cpp QtRoonStatusApi.cpp QtRoonDiscovery.cpp
+
 TARGET          = roon
 
 # Configure destination path by "Operating System/Compiler/Processor Architecture/Build Configuration"

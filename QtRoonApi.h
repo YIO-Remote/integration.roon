@@ -91,12 +91,12 @@ public:
     static QString      Unsubscribed;
     static QString      Changed;
 
-Q_SIGNALS:
+signals:
     void		closed();
     void		paired();
     void		unpaired();
 
-private Q_SLOTS:
+public slots:
     void		onConnected();
     void		onDisconnected();
     void		onBinaryMessageReceived(const QByteArray& message);

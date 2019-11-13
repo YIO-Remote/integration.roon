@@ -1,32 +1,59 @@
 #include "YioRoon.h"
 #include "../remote-software/sources/entities/mediaplayer.h"
 
+Roon::Roon() :
+    _log("roon"),
+    _api(nullptr),
+    _entities(nullptr),
+    _discovery(_log, parent())
+{}
 
 void Roon::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
 {
-    QMap<QObject *, QVariant> returnData;
+    QMap<QObject *, QVariant>   returnData;
+    QVariantList                data;
 
-    QVariantList data;
-    QString mdns;
+    _api = qobject_cast<YioAPIInterface *>(api);
+    _entities = qobject_cast<EntitiesInterface *>(entities);
 
     for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
-        if (iter.key() == "mdns") {
-            mdns = iter.value().toString();
-        } else if (iter.key() == "data") {
+        if (iter.key() == "data") {
             data = iter.value().toList();
+            break;
         }
     }
-    for (int i=0; i<data.length(); i++)
+    for (int i = 0; i < data.length(); i++)
     {
-        YioRoon* ha = new YioRoon(this);
-        ha->setup(data[i].toMap(), entities, notifications, api, configObj);
+        YioRoon* roon = new YioRoon(this);
+        roon->setup(data[i].toMap(), entities, notifications, api, configObj);
 
         QVariantMap d = data[i].toMap();
-        d.insert("mdns", mdns);
         d.insert("type", config.value("type").toString());
-        returnData.insert(ha, d);
+        returnData.insert(roon, d);
     }
-    emit createDone(returnData);
+    if (data.length() > 0)
+        emit createDone(returnData);
+    else {
+        connect (&_discovery, &QtRoonDiscovery::roonDiscovered, this, &Roon::onRoonDiscovered);
+        _discovery.startDiscovery(1000, true);
+    }
+}
+void Roon::onRoonDiscovered (QMap<QString, QVariantMap> soodmaps)
+{
+    QVariantMap roonsmap;
+
+    int idx = 1;
+    for (QMap<QString, QVariantMap>::const_iterator iter = soodmaps.begin(); iter != soodmaps.end(); ++iter) {
+        QVariantMap soodmap = iter->value(iter.key()).toMap();
+        QVariantMap roonmap;
+        roonmap["ip"] = iter.key();
+        roonmap["type"] = "roon";
+        roonmap["friendly_name"] = soodmap["name"];
+        roonmap["id"] = "roon" + (idx > 1 ? QString::number(idx) : "");
+        roonsmap["data"] = roonmap;
+        idx++;
+    }
+    // @@@
 }
 
 QLoggingCategory YioRoon::_log("roon");
@@ -92,10 +119,13 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
             setFriendlyName(iter.value().toString());
         else if (iter.key() == "id")
             setIntegrationId(iter.value().toString());
-        else if (iter.key() == "url")
-            _url = iter.value().toString();
-        else if (iter.key() == "imageurl")
-            _imageUrl = iter.value().toString();
+        else if (iter.key() == "ip") {
+            QString ip = iter.value().toString();
+            if (!ip.contains(':'))
+                ip += ":9100";
+            _url = "ws://" + ip + "/api";
+            _imageUrl = "http://" + ip + "/api/image/";
+        }
         else if (iter.key() == "log") {
             const QString& severity = iter.value().toString();
             if (severity == "debug") {
