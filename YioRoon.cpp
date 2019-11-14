@@ -53,7 +53,7 @@ void Roon::onRoonDiscovered (QMap<QString, QVariantMap> soodmaps)
         roonsmap["data"] = roonmap;
         idx++;
     }
-    // @@@
+    // @@@RIC
 }
 
 QLoggingCategory YioRoon::_log("roon");
