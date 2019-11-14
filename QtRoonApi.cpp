@@ -79,9 +79,10 @@ QtRoonApi::QtRoonApi(const QString& url, const QString& directory, RoonRegister&
 
     loadState();
 }
-void QtRoonApi::setup(const QString& url)
+void QtRoonApi::setup(const QString& url, const QString& directory)
 {
     _url = url;
+    _directory = directory;
 }
 void QtRoonApi::open() {
     _webSocket.open(_url);

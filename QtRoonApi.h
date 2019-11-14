@@ -59,7 +59,7 @@ class QtRoonApi : public QObject, IRoonCallback
 	Q_OBJECT
 public:
     explicit		QtRoonApi		(const QString& url, const QString& directory, RoonRegister& reg, QLoggingCategory& log, QObject* parent = nullptr);
-    void		setup			(const QString& url);
+    void		setup			(const QString& url, const QString& directory);
     void		open			();
     void		send			(const QString& path, int requestId, const QString* body = nullptr);
     int			send			(const QString& path, IRoonCallback* callback, const QString* body = nullptr);

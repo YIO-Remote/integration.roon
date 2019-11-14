@@ -1,20 +1,17 @@
 #include "YioRoon.h"
 #include "../remote-software/sources/entities/mediaplayer.h"
+#include "../remote-software/sources/configinterface.h"
 
-Roon::Roon() :
+Roon::Roon(QObject* parent) :
     _log("roon"),
-    _api(nullptr),
-    _entities(nullptr),
-    _discovery(_log, parent())
-{}
+    _discovery(_log, parent)
+{
+}
 
 void Roon::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
 {
     QMap<QObject *, QVariant>   returnData;
     QVariantList                data;
-
-    _api = qobject_cast<YioAPIInterface *>(api);
-    _entities = qobject_cast<EntitiesInterface *>(entities);
 
     for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
         if (iter.key() == "data") {
@@ -142,8 +139,10 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
             }
         }
     }
+    ConfigInterface* configInterface = qobject_cast<ConfigInterface *>(configObj);
+    QVariant appPath = configInterface->getContextProperty ("configPath");
     _entities = qobject_cast<EntitiesInterface *>(entities);
-    _roonApi.setup(_url);
+    _roonApi.setup(_url, appPath.toString());
 }
 
 void YioRoon::connect()

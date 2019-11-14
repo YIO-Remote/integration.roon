@@ -10,11 +10,12 @@
 class Roon : public IntegrationInterface
 {
     Q_OBJECT
+    //Q_DISABLE_COPY(Roon)
     Q_PLUGIN_METADATA(IID "YIO.IntegrationInterface" FILE "roon.json")
     Q_INTERFACES(IntegrationInterface)
 
 public:
-    explicit Roon();
+    explicit Roon(QObject* parent = nullptr);
     virtual ~Roon() override {
     }
 
@@ -25,8 +26,6 @@ public slots:
 
 private:
     QLoggingCategory    _log;
-    YioAPIInterface*    _api;
-    EntitiesInterface*  _entities;
     QtRoonDiscovery     _discovery;
 };
 
