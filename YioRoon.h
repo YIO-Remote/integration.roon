@@ -64,16 +64,22 @@ private:
     };
     class Action {
     public:
-         Action (const QString& roonName, const QString& yioName, EAction action, EAction forcedActions) :
+         Action (const QString& roonName, const QString& yioName, const QString& type, const QString& parentTitle, EAction action, EAction forcedActions, EAction forcedChildActions) :
              roonName(roonName),
              yioName(yioName),
+             type(type),
+             parentTitle(parentTitle),
              action(action),
-             forcedActions(forcedActions)
+             forcedActions(forcedActions),
+             forcedChildActions(forcedChildActions)
          {}
          QString    roonName;
          QString    yioName;
+         QString    type;
+         QString    parentTitle;
          EAction    action;
          EAction    forcedActions;
+         EAction    forcedChildActions;
     };
 
     RoonRegister                        _reg;
@@ -90,30 +96,36 @@ private:
     QStringList                         _entityIds;
     QStringList                         _zoneIds;
     QStringList                         _forcedActions;
+    QList<int>                          _goBack;            // automatic go back required
     QList<Action>                       _actions;
     QList<QtRoonBrowseApi::BrowseItem>* _items;
+    bool                                _cmdsForItem;
 
     static YioRoon*                     _instance;
     static QLoggingCategory             _log;
 
     static void transportCallback	(int requestId, const QString& msg);
-    static void loadCallback		(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
     static void browseCallback		(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result);
-    static void actionLoadCallback	(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
+    static void loadCallback		(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
     static void actionBrowseCallback    (int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result);
+    static void actionLoadCallback	(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
+    static void playBrowseCallback      (int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result);
+    static void playLoadCallback	(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result);
 
     void	browse                  (const QString& zoneId, bool fromTop);
     void	browse                  (const QString& zoneId, const QList<QtRoonBrowseApi::BrowseItem>& items, int itemIndex, bool action);
     void	browseAction            (const QString& zoneId, const QString& item_key);
     void	browseBack              (const QString& zoneId);
     void	browseRefresh           (const QString& zoneId);
+    bool        playMedia               (const QString& zoneId, const QString& itemKey);
 
     virtual void OnPaired		(const RoonCore& core) override;
     virtual void OnUnpaired		(const RoonCore& core) override;
 
     void        updateItems             (const QtRoonBrowseApi::LoadResult& result);
     void        updateZone              (const QString& id, const QtRoonTransportApi::Zone& zone, bool seekChanged);
+    QStringList getForcedActions        (EAction forcedActions);
     const Action* getActionRoon         (const QString& roonName);
     const Action* getActionYio          (const QString& yioName);
-    QStringList getForcedActions        (EAction forcedActions);
+    const Action* getActionParentTitle  (const QString& parentTitle);
 };
