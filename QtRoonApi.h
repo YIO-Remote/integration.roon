@@ -61,6 +61,7 @@ public:
     explicit		QtRoonApi		(const QString& url, const QString& directory, RoonRegister& reg, QLoggingCategory& log, QObject* parent = nullptr);
     void		setup			(const QString& url, const QString& directory);
     void		open			();
+    void		close			();
     void		send			(const QString& path, int requestId, const QString* body = nullptr);
     int			send			(const QString& path, IRoonCallback* callback, const QString* body = nullptr);
     void		reply			(const QString& command, int requestId, bool cont = false, QString* body = nullptr);

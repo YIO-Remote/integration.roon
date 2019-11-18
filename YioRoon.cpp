@@ -58,10 +58,9 @@ YioRoon* YioRoon::_instance = nullptr;
 
 YioRoon::YioRoon(QObject* parent) :
     _roonApi("ws://192.168.1.100:9100/api", "C:\\Temp\\", _reg, _log),
-    _browseApi(_roonApi),
+    _browseApi(_roonApi, this),
     _transportApi(_roonApi, transportCallback),
     _numItems(50),
-    _requestId(0),
     _items(nullptr),
     _cmdsForItem(true)
 {
@@ -69,18 +68,20 @@ YioRoon::YioRoon(QObject* parent) :
 
     EAction shuffleAction = static_cast<EAction> (ACT_SHUFFLE | ACT_STARTRADIO);
     EAction playAction = static_cast<EAction> (ACT_PLAYNOW | ACT_ADDNEXT | ACT_QUEUE | ACT_STARTRADIO);
+    EAction playFromAction = static_cast<EAction> (playAction | ACT_PLAYFROM);
 
     //                      ROON                YIO COMMAND     TYPE        PARENTTITLE     ACTION          FORCEDACTION    FORCEDCHILDACTION
     _actions.append(Action ("Play Genre",       "",             "Genre",    "Genres",       ACT_ACTIONLIST, shuffleAction,  shuffleAction));
     _actions.append(Action ("Play Artist",      "",             "Artist",   "Artists",      ACT_ACTIONLIST, shuffleAction,  playAction));
-    _actions.append(Action ("Play Album",       "",             "Album",    "Albums",       ACT_ACTIONLIST, playAction,     playAction));
-    _actions.append(Action ("Play Playlist",    "",             "Playlist", "PlayLists",    ACT_ACTIONLIST, shuffleAction,  playAction));
+    _actions.append(Action ("Play Album",       "",             "Album",    "Albums",       ACT_ACTIONLIST, playAction,     playFromAction));
+    _actions.append(Action ("Play Playlist",    "",             "Playlist", "PlayLists",    ACT_ACTIONLIST, shuffleAction,  playFromAction));
     _actions.append(Action ("Play Now",         "Play Now",     "Track",    "Tracks",       ACT_PLAYNOW,    ACT_NONE,       ACT_NONE));
+    _actions.append(Action ("Play Now",         "Play From",    "",         "",             ACT_PLAYFROM,   ACT_NONE,       ACT_NONE));
     _actions.append(Action ("Shuffle",          "Shuffle",      "",         "",             ACT_SHUFFLE,    ACT_NONE,       ACT_NONE));
     _actions.append(Action ("Add Next",         "Add Next",     "",         "",             ACT_ADDNEXT,    ACT_NONE,       ACT_NONE));
     _actions.append(Action ("Queue",            "Queue",        "",         "",             ACT_QUEUE,      ACT_NONE,       ACT_NONE));
     _actions.append(Action ("Start Radio",      "Start Radio",  "",         "",             ACT_STARTRADIO, ACT_NONE,       ACT_NONE));
-    _actions.append(Action ("TIDAL",            "Search",       "",         "",             ACT_REJECT,     ACT_NONE,       ACT_NONE));
+    //_actions.append(Action ("TIDAL",            "Search",       "",         "",             ACT_REJECT,     ACT_NONE,       ACT_NONE));
     _actions.append(Action ("Settings",         "",             "",         "",             ACT_REJECT,     ACT_NONE,       ACT_NONE));
     _actions.append(Action ("Tags",             "",             "",         "",             ACT_REJECT,     ACT_NONE,       ACT_NONE));
 
@@ -153,17 +154,13 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
 
 void YioRoon::connect()
 {
-    if (_entityIds.length() == 0) {
+    if (_contexts.length() == 0) {
         QVariantList emptyList;
         QStringList emptyButtons;
         QList<QObject*> list = _entities->getByIntegration(integrationId());
         for (int i = 0; i < list.length(); i++) {
             Entity* entity = static_cast<Entity*>(list[i]);
-            _entityIds.append(entity->entity_id());
-            _friendlyNames.append(entity->friendly_name());
-            _zoneIds.append("");
-            _forcedActions.append("");
-            _goBack.append(0);
+            _contexts.append(YioContext(i, entity->entity_id(), entity->friendly_name()));
             QVariantMap     map;
             map["items"] = emptyList;
             map["playCommands"] = emptyButtons;
@@ -173,11 +170,15 @@ void YioRoon::connect()
         }
         _items = new QList<QtRoonBrowseApi::BrowseItem> [static_cast<size_t>(list.length())];
     }
+    setState(CONNECTING);
     _roonApi.open();
 }
 void YioRoon::disconnect()
 {
-    //@@@
+    setState(DISCONNECTED);
+    _roonApi.close();
+    _contexts.clear();
+    delete [] _items;
 }
 void YioRoon::sendCommand(const QString& type, const QString& id, const QString& cmd, const QVariant& param)
 {
@@ -190,14 +191,18 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
     if (_log.isDebugEnabled())
         qCDebug(_log) << "ROON sendCommand " << type << " " << id << " " << cmd << " " << param.toString();
 
-    int idx = _entityIds.indexOf(id);
-    if (idx < 0 || idx >= _zoneIds.length()) {
+    int idx;
+    for (idx = 0; idx < _contexts.length(); idx++) {
+        if (_contexts[idx].entityId == id)
+            break;
+    }
+    if (idx >= _contexts.length()) {
         qCWarning(_log) << "ROON can't find id " << id;
         return;
     }
-    const QString& currentZoneId = _zoneIds[idx];
+    YioContext& ctx = _contexts[idx];
 
-    const QtRoonTransportApi::Zone& zone = _transportApi.getZone(currentZoneId);
+    const QtRoonTransportApi::Zone& zone = _transportApi.getZone(ctx.zoneId);
     const QtRoonTransportApi::Output& output = zone.outputs[0];
     if (cmd == "VOLUME_SET") {
         _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::absolute, param.toInt());
@@ -212,32 +217,31 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
         _transportApi.mute(output.output_id, param.toBool() ? QtRoonTransportApi::EMute::mute : QtRoonTransportApi::EMute::unmute);
     }
     else if (cmd == "PLAY") {
-        _transportApi.control(currentZoneId, QtRoonTransportApi::EControl::play);
+        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::play);
     }
     else if (cmd == "PAUSE") {
-        _transportApi.control(currentZoneId, QtRoonTransportApi::EControl::pause);
+        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::pause);
     }
     else if (cmd == "STOP") {
-        _transportApi.control(currentZoneId, QtRoonTransportApi::EControl::stop);
+        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::stop);
     }
     else if (cmd == "PREVIOUS") {
-        _transportApi.control(currentZoneId, QtRoonTransportApi::EControl::previous);
+        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::previous);
     }
     else if (cmd == "NEXT") {
-        _transportApi.control(currentZoneId, QtRoonTransportApi::EControl::next);
+        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::next);
     }
     else if (cmd == "BROWSE") {
-        _lastBrowseId = id;
         QString cmd = param.toString();
         if (cmd == "TOP")
-            browse(currentZoneId, true);
+            browse(ctx, true);
         else if (cmd == "BACK")
-            browseBack(currentZoneId);
+            browseBack(ctx);
         else {
             const QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
             for (int i = 0; i < items.length(); i++) {
                 if (items[i].item_key == cmd) {
-                    browse(currentZoneId, items, i, false);
+                    browse(ctx, items, i, false);
                     return;
                 }
             }
@@ -250,14 +254,14 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
                 if (items[i].hint == "action_list") {
                     const Action* actionList = getActionRoon(items[i].title);
                     if (actionList != nullptr) {
-                        _forcedActions[idx] = cmd;
-                        browseAction (currentZoneId, items[i].item_key);
+                       ctx.forcedAction = cmd;
+                        browseAction (ctx, items[i].item_key);
                         return;
                     }
                 }
                 if (items[i].hint == "action") {
                     if (items[i].title == action->roonName) {
-                        browse(currentZoneId, items, i, true);
+                        browse(ctx, items, i, true);
                         return;
                     }
                 }
@@ -265,12 +269,17 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
             qCWarning(_log) << "Can't find action list" << action->roonName;
         }
     }
-    else {
-        const Action* action = getActionYio(cmd);
+    else if (cmd.startsWith("play:")){
+        QString pcmd = cmd.mid (5);
+        const Action* action = getActionYio(pcmd);
         if (action != nullptr) {
-            if (playMedia(currentZoneId, param.toString()))
-                _forcedActions[idx] = cmd;
+            ctx.forcedAction = pcmd;
+            playMedia(ctx, param.toString(), true);
         }
+    }
+    else if (cmd.startsWith("search:")){
+        QString scmd = cmd.mid (7);
+        search (ctx, scmd, param.toString());
     }
 }
 void YioRoon::stateHandler(int state)
@@ -284,97 +293,99 @@ void YioRoon::stateHandler(int state)
     }
 }
 
-void YioRoon::browse(const QString& zoneId, bool fromTop)
+void YioRoon::browse(YioContext &ctx, bool fromTop)
 {
-    QtRoonBrowseApi::BrowseOption opt;
-    opt.zone_or_output_id = zoneId;
-    if (fromTop)
-        opt.pop_all = true;
-    opt.set_display_offset = 0;
-    _requestId = _browseApi.browse(opt, browseCallback);
+    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, fromTop, false, 0);
+    ctx.browseMode = BROWSE;
+   _browseApi.browse (opt, ctx);
 }
-void YioRoon::browse(const QString& zoneId, const QList<QtRoonBrowseApi::BrowseItem>& items, int itemIndex, bool action)
+void YioRoon::browse(YioContext &ctx, const QList<QtRoonBrowseApi::BrowseItem>& items, int itemIndex, bool action)
 {
     if (itemIndex < items.count()) {
-        QtRoonBrowseApi::BrowseOption opt;
-        opt.zone_or_output_id = zoneId;
-        opt.item_key = items[itemIndex].item_key;
-        if (!action)
-            opt.set_display_offset = 0;
-        _requestId = _browseApi.browse(opt, browseCallback);
+        QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, items[itemIndex].item_key, action ? -1 : 0);
+        ctx.browseMode = BROWSE;
+        _browseApi.browse (opt, ctx);
     }
 }
-void YioRoon::browseAction(const QString& zoneId, const QString& item_key)
+void YioRoon::browseBack (YioContext &ctx)
 {
-    QtRoonBrowseApi::BrowseOption opt;
-    opt.zone_or_output_id = zoneId;
-    opt.item_key = item_key;
-    _requestId = _browseApi.browse(opt, actionBrowseCallback);
+    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, 1, 0);
+    ctx.browseMode = BROWSE;
+    _browseApi.browse (opt, ctx);
 }
-void YioRoon::browseBack (const QString& zoneId)
+void YioRoon::browseRefresh(YioContext &ctx)
 {
-    QtRoonBrowseApi::BrowseOption opt;
-    opt.zone_or_output_id = zoneId;
-    opt.pop_levels = 1;
-    opt.set_display_offset = 0;
-    _requestId = _browseApi.browse(opt, browseCallback);
+    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, false, true, 0);
+    ctx.browseMode = BROWSE;
+    _browseApi.browse (opt, ctx);
 }
-void YioRoon::browseRefresh(const QString& zoneId)
+void YioRoon::search (YioContext &ctx, const QString& searchText, const QString& itemKey)
 {
-    QtRoonBrowseApi::BrowseOption opt;
-    opt.zone_or_output_id = zoneId;
-    opt.refresh_list = true;
-    opt.set_display_offset = 0;
-    _requestId = _browseApi.browse(opt, browseCallback);
+    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, itemKey, 0);
+    opt.input = searchText;
+    ctx.browseMode = BROWSE;
+    _browseApi.browse (opt, ctx);
 }
-bool YioRoon::playMedia(const QString& zoneId, const QString& item_key)
+void YioRoon::playMedia(YioContext &ctx, const QString& itemKey, bool setItemIndex)
 {
-    QtRoonBrowseApi::BrowseOption opt;
-    opt.zone_or_output_id = zoneId;
-    opt.item_key = item_key;
-    _requestId = _browseApi.browse(opt, playBrowseCallback);
-    return true;
+    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, itemKey);
+    ctx.browseMode = PLAY;
+   _browseApi.browse (opt, ctx);
+   if (setItemIndex) {
+       ctx.queueFrom = false;
+       ctx.gotoNext = false;
+       ctx.itemIndex = findItemIndex(_items[ctx.index], itemKey);
+   }
+}
+void YioRoon::browseAction(YioContext &ctx, const QString& itemKey)
+{
+    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, itemKey);
+    ctx.browseMode = ACTION;
+    _browseApi.browse (opt, ctx);
 }
 
 void YioRoon::onZonesChanged()
 {
+    if (state() != CONNECTED)
+        setState(CONNECTED);
+
     QMap<QString, QtRoonTransportApi::Zone>& zones = _transportApi.zones();
 
     for (QMap<QString, QtRoonTransportApi::Zone>::iterator i = zones.begin(); i != zones.end(); ++i) {
         const QtRoonTransportApi::Zone& zone = i.value();
-        int idx = _friendlyNames.indexOf(zone.display_name);
-        if (idx < 0)
-            qCDebug (_log) << "Zone Not found " << zone.display_name;
+        int idx;
+        for (idx = 0; idx < _contexts.length(); idx++) {
+            if (_contexts[idx].friendlyName == zone.display_name)
+                break;
+        }
+        if (idx >= _contexts.length()) {
+            if (_notFound.indexOf(zone.zone_id) < 0) {
+                _notFound.append(zone.zone_id);
+                qCWarning(_log) << "ROON can't find zone " << zone.display_name;
+            }
+        }
         else {
-            _zoneIds[idx] = zone.zone_id;
-            updateZone(_entityIds[idx], zone, false);
+           _contexts[idx].zoneId = zone.zone_id;
+            updateZone(_contexts[idx], zone, false);
         }
     }
-
-    /*
-    for (auto e : zones.keys())
-    {
-        const QtRoonTransportApi::Zone& zone = zones.value(e);
-        int idx = _friendlyNames.indexOf(zone.display_name);
-        if (idx < 0)
-            qCDebug (_log) << "Zone Not found " << zone.display_name;
-        else {
-            while (idx >= _zoneIds.length())
-                _zoneIds.append("");
-            _zoneIds[idx] = zone.zone_id;
-            updateZone(_entityIds[idx], zone, false);
-        }
-    }
-    */
 }
 
 void YioRoon::onZoneSeekChanged(const QtRoonTransportApi::Zone& zone)
 {
-    int idx = _zoneIds.indexOf(zone.zone_id);
-    if (idx < 0 || idx >= _entityIds[idx])
-        qCDebug (_log) << "Seek Zone Not found " << zone.display_name;
+    int idx;
+    for (idx = 0; idx < _contexts.length(); idx++) {
+        if (_contexts[idx].zoneId == zone.zone_id)
+            break;
+    }
+    if (idx >= _contexts.length()) {
+        if (_notFound.indexOf(zone.zone_id) < 0) {
+            _notFound.append(zone.zone_id);
+            qCWarning(_log) << "ROON can't find seek zone" << zone.display_name;
+        }
+    }
     else
-        updateZone (_entityIds[idx], zone, true);
+        updateZone (_contexts[idx], zone, true);
 }
 
 void YioRoon::OnPaired(const RoonCore& core)
@@ -393,119 +404,109 @@ void YioRoon::transportCallback(int requestId, const QString& msg)
     Q_UNUSED(requestId)
     Q_UNUSED(msg)
 }
-void YioRoon::browseCallback(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result)
+
+void YioRoon::OnBrowse (const QString& err, QtRoonBrowseApi::Context& context, const QtRoonBrowseApi::BrowseResult& result)
 {
     Q_UNUSED(err)
-    if (_instance != nullptr && _instance->_requestId == requestId) {
-        _instance->_requestId = 0;
-        if (result.action == "list" && result.list != nullptr) {
-            int listoffset = result.list->display_offset > 0 ? result.list->display_offset : 0;
-                QtRoonBrowseApi::LoadOption opt;
+
+    YioContext& ctx = static_cast<YioContext&>(context);
+    QtRoonBrowseApi::LoadOption opt;
+
+    if (!err.isEmpty()) {
+        updateError(ctx, err);
+        return;
+    }
+
+    if (result.action == "list" && result.list != nullptr) {
+        int listoffset = result.list->display_offset > 0 ? result.list->display_offset : 0;
+        switch (ctx.browseMode) {
+            case BROWSE:
+            case ACTION:
                 opt.offset = listoffset;
-                opt.count = _instance->_numItems;
+                opt.count = _numItems;
                 opt.set_display_offset = listoffset;
-                _instance->_requestId = _instance->_browseApi.load(opt, loadCallback);
-        }
-    }
-}
-void YioRoon::loadCallback(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result)
-{
-    Q_UNUSED(err)
-    if (_instance != nullptr && _instance->_requestId == requestId) {
-        _instance->_requestId = 0;
-        _instance->updateItems(result);
-    }
-}
-void YioRoon::actionBrowseCallback(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result)
-{
-    Q_UNUSED(err)
-    if (_instance != nullptr && _instance->_requestId == requestId) {
-        _instance->_requestId = 0;
-        if (result.action == "list" && result.list != nullptr) {
-            int listoffset = result.list->display_offset > 0 ? result.list->display_offset : 0;
-            QtRoonBrowseApi::LoadOption opt;
-            opt.offset = listoffset;
-            opt.count = _instance->_numItems;
-            opt.set_display_offset = listoffset;
-            _instance->_requestId = _instance->_browseApi.load(opt, actionLoadCallback);
-        }
-    }
-}
-void YioRoon::actionLoadCallback(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result)
-{
-    Q_UNUSED(err)
-    if (_instance != nullptr && _instance->_requestId == requestId) {
-        _instance->_requestId = 0;
-        for (int i = 0; i < _instance->_forcedActions.length(); i++) {
-            const QString & action = _instance->_forcedActions[i];
-            if (!action.isEmpty()) {
-                const Action* a = _instance->getActionYio(action);
-                for (int j = 0; j < result.items.length(); j++) {
-                    const QtRoonBrowseApi::BrowseItem& item = result.items[j];
-                    if (item.title == a->roonName) {
-                        // thats it
-                        _instance->browse(_instance->_zoneIds[i], result.items, j, true);
-                        _instance->_forcedActions[i] = "";
-                    }
-                }
-            }
-        }
-        qWarning(_instance->_log) << "Can't find forced action";
-    }
-}
-void YioRoon::playBrowseCallback(int requestId, const QString& err, const QtRoonBrowseApi::BrowseResult& result)
-{
-    Q_UNUSED(err)
-    if (_instance != nullptr && _instance->_requestId == requestId) {
-        _instance->_requestId = 0;
-        if (result.action == "list" && result.list != nullptr) {
-            QtRoonBrowseApi::LoadOption opt;
-            opt.offset = 0;
-            opt.count = 5;      // Max number of actions
-            _instance->_requestId = _instance->_browseApi.load(opt, playLoadCallback);
-        }
-    }
-}
-void YioRoon::playLoadCallback(int requestId, const QString& err, const QtRoonBrowseApi::LoadResult& result)
-{
-    Q_UNUSED(err)
-    if (_instance != nullptr && _instance->_requestId == requestId) {
-        _instance->_requestId = 0;
-        if (result.items.length() > 0) {
-            for (int i = 0; i < _instance->_forcedActions.length(); i++) {
-                const QString& forcedAction = _instance->_forcedActions[i];
-                const Action* action = _instance->getActionYio(forcedAction);
-                if (action != nullptr) {
-                    for (int j = 0; j < result.items.length(); j++) {
-                        if (result.items[j].title == action->roonName) {
-                            _instance->playMedia (_instance->_zoneIds[i], result.items[j].item_key);
-                            _instance->_forcedActions[i] = "";
-                            return;
-                        }
-                    }
-                    // Not found
-                    action = _instance->getActionRoon(result.items[0].title);
-                    if (action != nullptr) {
-                        _instance->playMedia (_instance->_zoneIds[i], result.items[0].item_key);
-                        _instance->_goBack[i] = 1;      // requires go back
-                        return;
-                    }
-                }
-                // perform necessary go back
-                if (_instance->_goBack[i] > 0) {
-                    QtRoonBrowseApi::BrowseOption opt;
-                    opt.zone_or_output_id = _instance->_zoneIds[i];
-                    opt.pop_levels = 1;
-                    opt.set_display_offset = 0;
-                    _instance->_requestId = _instance->_browseApi.browse(opt, playBrowseCallback);
-                    _instance->_goBack[i] = 0;
-                }
-            }
+                _browseApi.load (opt, ctx);
+                break;
+            case PLAY:
+                opt.offset = 0;
+                opt.count = 5;      // Max number of actions
+               _browseApi.load(opt, ctx);
+                break;
         }
     }
 }
 
-void YioRoon::updateZone (const QString& id, const QtRoonTransportApi::Zone& zone, bool seekChanged) {
+void YioRoon::OnLoad   (const QString& err, QtRoonBrowseApi::Context& context, const QtRoonBrowseApi::LoadResult& result)
+{
+    Q_UNUSED(err)
+
+    const Action* action;
+    YioContext& ctx = static_cast<YioContext&>(context);
+
+    switch (ctx.browseMode) {
+        case BROWSE:
+            updateItems(static_cast<YioContext&>(context), result);
+            break;
+        case PLAY:
+            if (result.items.length() > 0) {
+                action = getActionYio(ctx.forcedAction);
+                if (action != nullptr && !ctx.gotoNext) {
+                    QString roonName = ctx.queueFrom ? "Queue" : action->roonName;
+                    for (int j = 0; j < result.items.length(); j++) {
+                        if (result.items[j].title == roonName) {
+                            playMedia (ctx, result.items[j].item_key);
+                            if (!!(action->action & ACT_PLAYFROM) && ctx.itemIndex < _items[ctx.index].length() - 1) {
+                                ctx.gotoNext = true;
+                                ctx.queueFrom = true;
+                                return;     // Dont clear forced
+                            }
+                            ctx.forcedAction = "";
+                            return;
+                        }
+                    }
+                    // Not found
+                    const Action* playAction = getActionRoon(result.items[0].title);
+                    if (playAction != nullptr) {
+                        playMedia (ctx, result.items[0].item_key);
+                        ctx.goBack = 1;      // requires go back
+                        return;
+                    }
+                }
+                // Handle play from
+                if (ctx.gotoNext && action != nullptr && !!(action->action & ACT_PLAYFROM)) {
+                    QList<QtRoonBrowseApi::BrowseItem>& items = _items[ctx.index];
+                    ctx.itemIndex++;
+                    ctx.gotoNext = false;
+                    if (ctx.itemIndex < items.length())
+                        playMedia (ctx, items[ctx.itemIndex].item_key);
+                    else
+                        ctx.forcedAction = "";
+                }
+                // perform necessary go back
+                if (ctx.goBack > 0) {
+                    browseBack(ctx);
+                    ctx.goBack = 0;
+                }
+            }
+            break;
+        case ACTION:
+            action = _instance->getActionYio(ctx.forcedAction);
+            if (action != nullptr) {
+                for (int j = 0; j < result.items.length(); j++) {
+                    const QtRoonBrowseApi::BrowseItem& item = result.items[j];
+                    if (item.title == action->roonName) {
+                        // thats it
+                        browse(ctx, result.items, j, true);
+                        ctx.forcedAction = "";
+                    }
+                }
+            }
+            break;
+    }
+}
+
+
+void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone, bool seekChanged) {
     QVariantMap map;
     /*
         Q_PROPERTY  (states         state       READ    state       NOTIFY      stateChanged)
@@ -549,7 +550,7 @@ void YioRoon::updateZone (const QString& id, const QtRoonTransportApi::Zone& zon
         map["source"] = "Source";
         map["mediaType"] = "MediaType";
         if (_log.isInfoEnabled()) {
-            QString line = id;
+            QString line = ctx.entityId;
             for (QVariantMap::const_iterator iter = map.begin(); iter != map.end(); ++iter) {
                 line += " ";
                 line += iter.key();
@@ -558,20 +559,16 @@ void YioRoon::updateZone (const QString& id, const QtRoonTransportApi::Zone& zon
             }
             qCInfo(_log) << "ROON update " << line;
         }
-        _entities->update(id, map);
+        _entities->update(ctx.entityId, map);
     }
 }
-void YioRoon::updateItems (const QtRoonBrowseApi::LoadResult& result) {
+void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result) {
     QVariantList    list;
     QStringList     playCommands;
     int             level = 0;
 
-    int idx = _entityIds.indexOf(_lastBrowseId);
-    if (idx < 0) {
-        qCWarning(_log) << "updateItems not found " << _lastBrowseId;
-        _lastBrowseId.clear();
-        return;
-    }
+    int idx = ctx.index;
+
     QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
     items.clear();
     QString     browseType;
@@ -586,8 +583,6 @@ void YioRoon::updateItems (const QtRoonBrowseApi::LoadResult& result) {
     for (int i = 0; i < result.items.length(); i++) {
         const QtRoonBrowseApi::BrowseItem& item = result.items[i];
         items.append(item);
-        if (item.input_prompt != nullptr)
-            continue;
         if (_cmdsForItem) {
             if (item.hint == "action_list" || level == 0) {
                 const Action* action = getActionRoon(item.title);
@@ -630,6 +625,8 @@ void YioRoon::updateItems (const QtRoonBrowseApi::LoadResult& result) {
         entityItem["item_key"] = item.item_key;
         entityItem["title"] = item.title;
         entityItem["sub_title"] = item.subtitle;
+        if (item.input_prompt != nullptr)
+            entityItem["input_prompt"] = item.input_prompt->prompt;
         if (!item.image_key.isEmpty())
             entityItem["image_url"] = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
         else
@@ -651,9 +648,18 @@ void YioRoon::updateItems (const QtRoonBrowseApi::LoadResult& result) {
     }
     QVariantMap     resultMap;
     resultMap["browseResult"] = map;
-    _entities->update(_lastBrowseId, resultMap);
-    _lastBrowseId.clear();
+    _entities->update(ctx.entityId, resultMap);
 }
+void YioRoon::updateError (YioContext& ctx, const QString& error)
+{
+    QVariantMap     map;
+    map["error"] = error;
+
+    QVariantMap     resultMap;
+    resultMap["browseResult"] = map;
+    _entities->update(ctx.entityId, resultMap);
+}
+
 const YioRoon::Action* YioRoon::getActionRoon (const QString& roonName) {
     if (roonName == "")
         return nullptr;
@@ -682,7 +688,7 @@ const YioRoon::Action* YioRoon::getActionParentTitle(const QString& parentTitle)
     return nullptr;
 }
 QStringList YioRoon::getForcedActions (EAction forcedActions) {
-    EAction actions[] = { ACT_PLAYNOW, ACT_SHUFFLE, ACT_ADDNEXT, ACT_QUEUE, ACT_STARTRADIO };
+    EAction actions[] = { ACT_PLAYNOW, ACT_PLAYFROM, ACT_SHUFFLE, ACT_ADDNEXT, ACT_QUEUE, ACT_STARTRADIO };
     QStringList list;
     for (size_t i = 0; i < sizeof(actions) / sizeof(actions[0]); i++) {
         if (forcedActions & actions[i]) {
@@ -696,3 +702,11 @@ QStringList YioRoon::getForcedActions (EAction forcedActions) {
     }
     return list;
 }
+int YioRoon::findItemIndex (const QList<QtRoonBrowseApi::BrowseItem>& items, const QString& itemKey)
+{
+    for (int i = 0; i < items.length(); i++)
+        if (items[i].item_key == itemKey)
+            return i;
+    return -1;
+}
+

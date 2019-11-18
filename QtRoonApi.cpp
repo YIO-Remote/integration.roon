@@ -87,6 +87,9 @@ void QtRoonApi::setup(const QString& url, const QString& directory)
 void QtRoonApi::open() {
     _webSocket.open(_url);
 }
+void QtRoonApi::close() {
+    _webSocket.close();
+}
 void QtRoonApi::addService(const QString& serviceName, IRoonCallback* service)
 {
     _services.insert(serviceName, service);

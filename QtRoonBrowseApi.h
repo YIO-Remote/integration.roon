@@ -33,6 +33,19 @@ public:
             pop_levels = set_display_offset = -1; pop_all = refresh_list = false;
             hierarchy = "browse";
         }
+        BrowseOption(const QString &id, bool popAll, bool refreshList = false, int setDisplayOffset = -1) {
+            hierarchy = "browse"; zone_or_output_id = id; set_display_offset = setDisplayOffset;
+            pop_levels = -1; pop_all = popAll; refresh_list = refreshList;
+        }
+        BrowseOption(const QString &id, int popLevels, int setDisplayOffset = -1) {
+            hierarchy = "browse"; zone_or_output_id = id;
+            pop_levels = popLevels; set_display_offset = setDisplayOffset;
+            pop_all = refresh_list = false;
+        }
+        BrowseOption(const QString &id, const QString& itemKey, int setDisplayOffset = -1) {
+            hierarchy = "browse"; zone_or_output_id = id; item_key = itemKey; set_display_offset = setDisplayOffset;
+            pop_levels = -1; pop_all = refresh_list = false;
+        }
         QString			hierarchy;
         QString			zone_or_output_id;
         QString			multi_session_key;
@@ -86,15 +99,32 @@ public:
         BrowseList*		list;
     };
 
-    explicit	QtRoonBrowseApi(QtRoonApi& roonApi, QObject* parent = nullptr);
+    struct Context {
+        int     requestId;
+        QString zoneId;
+        bool    isLoad;
+    };
+
+    struct ICallback {
+        virtual ~ICallback();
+        virtual void OnBrowse (const QString& err, Context& context, const BrowseResult& content) = 0;
+        virtual void OnLoad   (const QString& err, Context& context, const LoadResult& content) = 0;
+    };
+
+    explicit	QtRoonBrowseApi(QtRoonApi& roonApi, ICallback* callBack = nullptr, QObject* parent = nullptr);
     virtual	void OnReceived(const ReceivedContent& content) override;
 
     int browse	(const BrowseOption& option, void (*func) (int requestId, const QString& err, const BrowseResult& result));
-    int load	(const LoadOption& option,	void (*func) (int requestId, const QString& err, const LoadResult& result));
+    int load	(const LoadOption& option, void (*func) (int requestId, const QString& err, const LoadResult& result));
+
+    int browse	(const BrowseOption& option, Context& context);
+    int load	(const LoadOption& option, Context& context);
 
 private:
-    QtRoonApi&				_roonApi;
-    void (*_browseCallback) (int requestId, const QString& err, const BrowseResult& result);
-    void (*_loadCallback)   (int requestId, const QString& err, const LoadResult& result);
-
+    static const int        NUMCONTEXTS = 10;
+    QtRoonApi&              _roonApi;
+    ICallback*              _callback;
+    Context*                _context[NUMCONTEXTS];
+    void                    (*_browseCallback) (int requestId, const QString& err, const BrowseResult& result);
+    void                    (*_loadCallback)   (int requestId, const QString& err, const LoadResult& result);
 };

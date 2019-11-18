@@ -1,11 +1,4 @@
-Integrations OnComplete countloaded problem wenn kein Dock
-
 Generell    Include von remote header
-            mdns ? optional
             categorized log, combine with Logger class
 MediaPlayer
-            Features    Volume value or up/down, Button should be configureable (supported_features)
-
-            List
-                Paging ?
-                image rendering ?
+            Internet Radio crashing

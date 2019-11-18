@@ -1,6 +1,9 @@
 #include <QJsonDocument>
 #include "QtRoonBrowseApi.h" 
 
+QtRoonBrowseApi::ICallback::~ICallback()
+{}
+
 QtRoonBrowseApi::BrowseInput::BrowseInput() :
 	is_password(false)
 {}
@@ -158,12 +161,14 @@ void QtRoonBrowseApi::BrowseOption::toJson(QString& json) const
 }
 
 
-QtRoonBrowseApi::QtRoonBrowseApi(QtRoonApi& roonApi, QObject* parent) :
+QtRoonBrowseApi::QtRoonBrowseApi(QtRoonApi& roonApi, ICallback* callback, QObject* parent) :
     QObject(parent),
     _roonApi(roonApi),
+    _callback(callback),
     _browseCallback(nullptr),
     _loadCallback(nullptr)
 {
+    memset (_context, 0, sizeof (_context));
 }
 void QtRoonBrowseApi::OnReceived(const ReceivedContent& content)
 {
@@ -173,7 +178,27 @@ void QtRoonBrowseApi::OnReceived(const ReceivedContent& content)
     QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
     QVariantMap map = document.toVariant().toMap();
     QString err;
-    if (_browseCallback != nullptr) {
+    if (content._command != "Success")
+        err = "Error: " + content._command;
+    if (_callback != nullptr) {
+        Context* context = _context[content._requestId % NUMCONTEXTS];
+        if (context == nullptr || context->requestId != content._requestId) {
+            qCWarning(_roonApi.Log()) << "RoonBrowseApi.OnReceived context not found : "  << content._requestId;
+            return;
+        }
+        if (context->isLoad) {
+            LoadResult result(map);
+            _callback->OnLoad(err, *context, result);
+        }
+        else {
+            BrowseResult result(map);
+            if (result.is_error)
+                err = result.message;
+            _callback->OnBrowse(err, *context, result);
+        }
+        _context[content._requestId % NUMCONTEXTS] = nullptr;
+    }
+    else if (_browseCallback != nullptr) {
         BrowseResult result(map);
         if (result.is_error)
             err = result.message;
@@ -201,4 +226,25 @@ int QtRoonBrowseApi::load(const LoadOption& option, void (*func) (int requestId,
     option.toJson(json);
     return _roonApi.send(QtRoonApi::ServiceBrowse + "/load", this, &json);
 }
+
+int QtRoonBrowseApi::browse (const BrowseOption& option, Context& context)
+{
+    QString	json;
+    option.toJson(json);
+    int requestId = _roonApi.send(QtRoonApi::ServiceBrowse + "/browse", this, &json);
+    context.requestId = requestId;
+    context.isLoad = false;
+    _context[requestId % NUMCONTEXTS] = &context;
+    return requestId;
+}
+int QtRoonBrowseApi::load (const LoadOption& option, Context& context) {
+    QString	json;
+    option.toJson(json);
+    int requestId = _roonApi.send(QtRoonApi::ServiceBrowse + "/load", this, &json);
+    context.requestId = requestId;
+    context.isLoad = true;
+    _context[requestId % NUMCONTEXTS] = &context;
+    return requestId;
+}
+
 
