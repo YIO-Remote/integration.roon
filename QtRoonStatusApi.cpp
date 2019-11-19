@@ -23,7 +23,7 @@ QtRoonStatusApi::QtRoonStatusApi(QtRoonApi& roonApi, QObject* parent) :
 void QtRoonStatusApi::OnReceived(const ReceivedContent& content)
 {
     if (_roonApi.Log().isDebugEnabled())
-        qCDebug(_roonApi.Log()) << "RoonStatusApi.OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
+        qCDebug(_roonApi.Log()) << "Status.OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
 
     QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
     QVariantMap map = document.toVariant().toMap();

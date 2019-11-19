@@ -277,7 +277,7 @@ QtRoonTransportApi::QtRoonTransportApi(QtRoonApi& roonApi, TCallback callback, Q
 void QtRoonTransportApi::OnReceived(const ReceivedContent& content)
 {
     if (_roonApi.Log().isDebugEnabled())
-        qCDebug(_roonApi.Log()) << "RoonTransportApi.OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
+        qCDebug(_roonApi.Log()) << "Transport.OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
 
     QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
     QVariantMap map = document.toVariant().toMap();
@@ -369,7 +369,7 @@ QList<QtRoonTransportApi::Zone>* QtRoonTransportApi::getZones() {
 
 void QtRoonTransportApi::subscribeZones()
 {
-    qCDebug(_roonApi.Log()) << "QtRoonTransportApi.subscribeZones";
+    qCDebug(_roonApi.Log()) << "Transport.subscribeZones";
     _roonApi.sendSubscription(QtRoonApi::ServiceTransport + "/subscribe_zones", this);
 }
 
@@ -425,12 +425,12 @@ int QtRoonTransportApi::seek(const QString& zone_or_output_id, EValueMode how, i
 
 void QtRoonTransportApi::OnPaired(const RoonCore& core)
 {
-    qCInfo(_roonApi.Log()) << "QtRoonTransportApi.OnPaired" << core.core_id;
+    qCInfo(_roonApi.Log()) << "Transport.OnPaired" << core.core_id;
     subscribeZones();
 }
 void QtRoonTransportApi::OnUnpaired(const RoonCore& core)
 {
-    qCInfo(_roonApi.Log()) << "QtRoonTransportApi.OnUnPaired" << core.core_id;
+    qCInfo(_roonApi.Log()) << "Transport.OnUnPaired" << core.core_id;
 }
 int QtRoonTransportApi::send(const QString& path, const QVariantMap& map, TCallback callback)
 {

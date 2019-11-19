@@ -6,6 +6,7 @@
 #include "QtRoonDiscovery.h"
 #include "../remote-software/sources/integrations/integration.h"
 #include "../remote-software/sources/integrations/integrationinterface.h"
+#include "../remote-software/sources/notificationsinterface.h"
 
 class Roon : public IntegrationInterface
 {
@@ -43,11 +44,12 @@ public:
 
     static QLoggingCategory& Log    () { return _log; }
 
+
 public slots:
     void        sendCommand         (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
-    void        stateHandler        (int state);
     void        onZonesChanged      ();
     void        onZoneSeekChanged   (const QtRoonTransportApi::Zone& zone);
+    void        onError             (const QString& error);
 
 private:
     enum EAction  {
@@ -107,6 +109,7 @@ private:
         QString     entityId;
         QString     friendlyName;
         QString     forcedAction;
+        QStringList path;
         int         goBack;
     };
 
@@ -119,6 +122,7 @@ private:
     QString                             _url;
     QString                             _imageUrl;
     EntitiesInterface*                  _entities;
+    NotificationsInterface*             _notifications;
     QList<Action>                       _actions;
     QList<QtRoonBrowseApi::BrowseItem>* _items;
     QList<YioContext>                   _contexts;

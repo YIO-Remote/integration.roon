@@ -76,6 +76,8 @@ QtRoonApi::QtRoonApi(const QString& url, const QString& directory, RoonRegister&
     connect(&_webSocket, &QWebSocket::stateChanged, this, &QtRoonApi::onStateChanged);
     connect(&_webSocket, &QWebSocket::binaryMessageReceived, this, &QtRoonApi::onBinaryMessageReceived);
     //_webSocket.ignoreSslErrors();
+    //connect(&_webSocket, &QWebSocket::error, this, &QtRoonApi::onError);  not working
+    QObject::connect(&_webSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
 
     loadState();
 }
@@ -161,33 +163,7 @@ void QtRoonApi::onBinaryMessageReceived(const QByteArray& message) {
                 this->reply(Success, content._requestId, false, nullptr);
             }
             else if (content._service == ServicePairing) {
-                QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
-                QVariantMap map = document.toVariant().toMap();
-                int key = map["subscription_key"].toInt();
-                if (content._command == "/subscribe_pairing") {
-                    QVariantMap replymap;
-                    _subscriptions[key] = content._requestId;
-                    _paired = true;
-                    _roonState.paired_core_id = _roonCore.core_id;
-                    replymap["paired_core_id"] = _roonCore.core_id;
-                    QJsonDocument doc = QJsonDocument::fromVariant(replymap);
-                    QString json(doc.toJson(QJsonDocument::JsonFormat::Compact));
-                    reply(Subscribed, content._requestId, false, &json);
-                    if (_register.paired != nullptr)
-                        _register.paired->OnPaired(_roonCore);
-                    emit paired();
-                    saveState();
-                }
-                else if (content._command == "/unsubscribe_pairing") {
-                    _subscriptions.remove(key);
-                    _paired = false;
-                    _roonState.paired_core_id.clear();
-                    reply(Unsubscribed, content._requestId);
-                    if (_register.paired != nullptr)
-                        _register.paired->OnUnpaired(_roonCore);
-                    emit unpaired();
-                    saveState();
-                }
+                onPairing (content);
             }
             else {
                 cb = _services.value(content._service, nullptr);
@@ -208,8 +184,43 @@ void QtRoonApi::onBinaryMessageReceived(const QByteArray& message) {
         }
     }
 }
+void QtRoonApi::onPairing (const ReceivedContent& content)
+{
+    QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
+    QVariantMap map = document.toVariant().toMap();
+    int key = map["subscription_key"].toInt();
+    if (content._command == "/subscribe_pairing") {
+        QVariantMap replymap;
+        _subscriptions[key] = content._requestId;
+        _paired = true;
+        _roonState.paired_core_id = _roonCore.core_id;
+        replymap["paired_core_id"] = _roonCore.core_id;
+        QJsonDocument doc = QJsonDocument::fromVariant(replymap);
+        QString json(doc.toJson(QJsonDocument::JsonFormat::Compact));
+        reply(Subscribed, content._requestId, false, &json);
+        if (_register.paired != nullptr)
+            _register.paired->OnPaired(_roonCore);
+        emit paired();
+        saveState();
+    }
+    else if (content._command == "/unsubscribe_pairing") {
+        _subscriptions.remove(key);
+        _paired = false;
+        _roonState.paired_core_id.clear();
+        reply(Unsubscribed, content._requestId);
+        if (_register.paired != nullptr)
+            _register.paired->OnUnpaired(_roonCore);
+        emit unpaired();
+        saveState();
+    }
+}
+
 void QtRoonApi::onStateChanged(QAbstractSocket::SocketState state) {
     qCDebug(_log) << "OnStateChanged : " << state;
+}
+void QtRoonApi::onError(QAbstractSocket::SocketError err) {
+    qCDebug(_log) << "OnError : " << err;
+    emit error ("Socket error " + QString::number(err));
 }
 
 void QtRoonApi::setRegistration()
@@ -230,7 +241,7 @@ void QtRoonApi::getRegistrationInfo()
 void QtRoonApi::OnReceived(const ReceivedContent& content)
 {
     if (_log.isDebugEnabled())
-        qCDebug(_log) << "RoonApi.OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
+        qCDebug(_log) << "OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
 
     QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
     QVariantMap map = document.toVariant().toMap();

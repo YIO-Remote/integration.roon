@@ -1,4 +1,11 @@
-Generell    Include von remote header
-            categorized log, combine with Logger class
+Generell    	Include von remote header
+            	categorized log, combine with Logger class
 MediaPlayer
-            Internet Radio crashing
+            	Internet Radio crashing
+
+Added 		Notification
+		Improve log
+		Build path
+
+Questions	How to test on Pi Zero
+		How to add a private component

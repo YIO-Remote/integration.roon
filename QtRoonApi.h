@@ -93,15 +93,17 @@ public:
     static QString      Changed;
 
 signals:
-    void		closed();
-    void		paired();
-    void		unpaired();
+    void		closed                  ();
+    void		error                   (QString err);
+    void		paired                  ();
+    void		unpaired                ();
 
 public slots:
-    void		onConnected();
-    void		onDisconnected();
-    void		onBinaryMessageReceived(const QByteArray& message);
-    void		onStateChanged(QAbstractSocket::SocketState state);
+    void		onConnected             ();
+    void		onDisconnected          ();
+    void		onBinaryMessageReceived (const QByteArray& message);
+    void		onStateChanged          (QAbstractSocket::SocketState state);
+    void                onError                 (QAbstractSocket::SocketError error);
 
 private:
     struct RoonState
@@ -110,12 +112,13 @@ private:
         QString			paired_core_id;
     };
 
-    void		setRegistration();
-    void		getRegistrationInfo();
-    bool		setCallback(int requestId, IRoonCallback* callback);
-    bool		parseReveived(const QByteArray& data, ReceivedContent&  content);
-    bool		saveState();
-    bool		loadState();
+    void                onPairing               (const ReceivedContent& content);
+    void		setRegistration         ();
+    void		getRegistrationInfo     ();
+    bool		setCallback             (int requestId, IRoonCallback* callback);
+    bool		parseReveived           (const QByteArray& data, ReceivedContent&  content);
+    bool		saveState               ();
+    bool		loadState               ();
 
     RoonRegister&                   _register;
     RoonCore                        _roonCore;

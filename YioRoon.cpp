@@ -101,6 +101,7 @@ YioRoon::YioRoon(QObject* parent) :
 
     QObject::connect(&_transportApi, &QtRoonTransportApi::zonesChanged, this, &YioRoon::onZonesChanged);
     QObject::connect(&_transportApi, &QtRoonTransportApi::zoneSeekChanged, this, &YioRoon::onZoneSeekChanged);
+    QObject::connect(&_roonApi, &QtRoonApi::error, this, &YioRoon::onError);
     _instance = this;
 }
 YioRoon::~YioRoon()
@@ -149,6 +150,7 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
     ConfigInterface* configInterface = qobject_cast<ConfigInterface *>(configObj);
     QVariant appPath = configInterface->getContextProperty ("configPath");
     _entities = qobject_cast<EntitiesInterface *>(entities);
+    _notifications = qobject_cast<NotificationsInterface *> (notifications);
     _roonApi.setup(_url, appPath.toString());
 }
 
@@ -189,7 +191,7 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
     "PLAY", "PAUSE", "STOP", "PREVIOUS", "NEXT", "SEEK", "SHUFFLE", "TURN_ON", "TURN_OFF"
 */
     if (_log.isDebugEnabled())
-        qCDebug(_log) << "ROON sendCommand " << type << " " << id << " " << cmd << " " << param.toString();
+        qCDebug(_log) << "sendCommand " << type << " " << id << " " << cmd << " " << param.toString();
 
     int idx;
     for (idx = 0; idx < _contexts.length(); idx++) {
@@ -197,7 +199,7 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
             break;
     }
     if (idx >= _contexts.length()) {
-        qCWarning(_log) << "ROON can't find id " << id;
+        qCWarning(_log) << "can't find id " << id;
         return;
     }
     YioContext& ctx = _contexts[idx];
@@ -282,17 +284,6 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
         search (ctx, scmd, param.toString());
     }
 }
-void YioRoon::stateHandler(int state)
-{
-    if (state == CONNECTED) {
-        setState(CONNECTED);
-    } else if (state == CONNECTING) {
-        setState(CONNECTING);
-    } else if (state == DISCONNECTED) {
-        setState(DISCONNECTED);
-    }
-}
-
 void YioRoon::browse(YioContext &ctx, bool fromTop)
 {
     QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, fromTop, false, 0);
@@ -361,7 +352,7 @@ void YioRoon::onZonesChanged()
         if (idx >= _contexts.length()) {
             if (_notFound.indexOf(zone.zone_id) < 0) {
                 _notFound.append(zone.zone_id);
-                qCWarning(_log) << "ROON can't find zone " << zone.display_name;
+                qCWarning(_log) << "can't find zone " << zone.display_name;
             }
         }
         else {
@@ -381,11 +372,15 @@ void YioRoon::onZoneSeekChanged(const QtRoonTransportApi::Zone& zone)
     if (idx >= _contexts.length()) {
         if (_notFound.indexOf(zone.zone_id) < 0) {
             _notFound.append(zone.zone_id);
-            qCWarning(_log) << "ROON can't find seek zone" << zone.display_name;
+            qCWarning(_log) << "can't find seek zone" << zone.display_name;
         }
     }
     else
         updateZone (_contexts[idx], zone, true);
+}
+void YioRoon::onError (const QString& error)
+{
+    _notifications->add(true, "Cannot connect ROON : " + error, tr("Reconnect"), "roon");
 }
 
 void YioRoon::OnPaired(const RoonCore& core)
@@ -418,6 +413,13 @@ void YioRoon::OnBrowse (const QString& err, QtRoonBrowseApi::Context& context, c
     }
 
     if (result.action == "list" && result.list != nullptr) {
+        // Adjust path
+        while (result.list->level < ctx.path.length())
+            ctx.path.removeLast();
+        ctx.path.append(result.list->title);
+        if (_log.isDebugEnabled())
+            qCDebug(_log) << "PATH: " << ctx.path.join('/');
+
         int listoffset = result.list->display_offset > 0 ? result.list->display_offset : 0;
         switch (ctx.browseMode) {
             case BROWSE:
@@ -557,7 +559,7 @@ void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone,
                 line += ":";
                 line += iter.value().toString();
             }
-            qCInfo(_log) << "ROON update " << line;
+            qCInfo(_log) << "update " << line;
         }
         _entities->update(ctx.entityId, map);
     }
@@ -652,12 +654,8 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
 }
 void YioRoon::updateError (YioContext& ctx, const QString& error)
 {
-    QVariantMap     map;
-    map["error"] = error;
-
-    QVariantMap     resultMap;
-    resultMap["browseResult"] = map;
-    _entities->update(ctx.entityId, resultMap);
+    Q_UNUSED(ctx)
+    _notifications->add(true, "ROON browsing error : " + error);
 }
 
 const YioRoon::Action* YioRoon::getActionRoon (const QString& roonName) {

@@ -173,17 +173,17 @@ QtRoonBrowseApi::QtRoonBrowseApi(QtRoonApi& roonApi, ICallback* callback, QObjec
 void QtRoonBrowseApi::OnReceived(const ReceivedContent& content)
 {
     if (_roonApi.Log().isDebugEnabled())
-        qCDebug(_roonApi.Log()) << "RoonBrowseApi.OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
+        qCDebug(_roonApi.Log()) << "Browse.OnReceived : " << content._messageType << " " << content._requestId << " " << content._service << content._command;
 
     QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
     QVariantMap map = document.toVariant().toMap();
     QString err;
-    if (content._command != "Success")
+    if (content._command != QtRoonApi::Success)
         err = "Error: " + content._command;
     if (_callback != nullptr) {
         Context* context = _context[content._requestId % NUMCONTEXTS];
         if (context == nullptr || context->requestId != content._requestId) {
-            qCWarning(_roonApi.Log()) << "RoonBrowseApi.OnReceived context not found : "  << content._requestId;
+            qCWarning(_roonApi.Log()) << "Browse.OnReceived context not found : "  << content._requestId;
             return;
         }
         if (context->isLoad) {
