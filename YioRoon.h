@@ -6,6 +6,7 @@
 #include "QtRoonDiscovery.h"
 #include "../remote-software/sources/integrations/integration.h"
 #include "../remote-software/sources/integrations/integrationinterface.h"
+#include "../remote-software/sources/entities/entitiesinterface.h"
 #include "../remote-software/sources/notificationsinterface.h"
 
 class Roon : public IntegrationInterface

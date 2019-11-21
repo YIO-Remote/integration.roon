@@ -9,3 +9,16 @@ Added 		Notification
 
 Questions	How to test on Pi Zero
 		How to add a private component
+
+Changes entities:
+
+integrationinterface.h	    remove include files
+launcher.cpp		    #include "notifications.h"
+
+configinterface.h	    Implement destructor in config.cpp
+notificationinterface.h	    Implement destructor in notification.cpp
+
+entity.h		    remove attributes
+add entityinterface.h
+
+remote.h		    favorite conflicts, change to toFavorite

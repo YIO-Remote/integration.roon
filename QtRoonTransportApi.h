@@ -180,5 +180,4 @@ class QtRoonTransportApi : public QObject, public IRoonCallback, public IRoonPai
         virtual void            OnUnpaired      (const RoonCore& core) override;
 
         static QMetaEnum        getMetaEnum     (const char* enumName);
-
 };
