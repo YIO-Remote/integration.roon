@@ -542,7 +542,7 @@ void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone,
         Q_PROPERTY  (QString        source      READ    source      NOTIFY      sourceChanged)
     */
 
-    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getInterface(ctx.entityId));
+    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
     if (!seekChanged) {
         MediaPlayerDef::States state;
         switch (zone.state) {
@@ -660,7 +660,7 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
         map["title"] = "";
         map["level"] = -1;
     }
-    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getInterface(ctx.entityId));
+    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
     entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::BROWSERESULT), map);
     /*
     QVariantMap     resultMap;
