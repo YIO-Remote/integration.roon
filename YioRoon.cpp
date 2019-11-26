@@ -1,3 +1,4 @@
+#define PERF_TEST   0
 #include "YioRoon.h"
 #include "../remote-software/sources/entities/mediaplayer.h"
 #include "../remote-software/sources/configinterface.h"
@@ -157,10 +158,9 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
 
 void YioRoon::connect()
 {
-    /*
-    if (false) {        // TEST
-        int i;
-        EntityInterface* entity = _entities->getInterface("media_player.work");
+#if PERF_TEST
+    if (true) {        // TEST
+        EntityInterface* entity = _entities->getEntityInterface("media_player.work");
         QString friendly = entity->friendly_name();
         MediaPlayerInterface* player = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
         int index = entity->getAttrIndex("volume");
@@ -176,8 +176,7 @@ void YioRoon::connect()
         entity->updateAttrByName("mediaArtist", "Maxl");
         QString artist = player->mediaArtist();
     }
-    */
-
+#endif
     if (_contexts.length() == 0) {
         QVariantList emptyList;
         QStringList emptyButtons;
@@ -547,33 +546,33 @@ void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone,
         MediaPlayerDef::States state;
         switch (zone.state) {
             case QtRoonTransportApi::EState::unknown:
-            case QtRoonTransportApi::EState::stopped:   state = MediaPlayerDef::States::OFF;       break;
-            case QtRoonTransportApi::EState::playing:   state = MediaPlayerDef::States::PLAYING;   break;
-            case QtRoonTransportApi::EState::paused:    state = MediaPlayerDef::States::ON;        break;
-            case QtRoonTransportApi::EState::loading:   state = MediaPlayerDef::States::IDLE;      break;
+            case QtRoonTransportApi::EState::stopped:   state = MediaPlayerDef::OFF;       break;
+            case QtRoonTransportApi::EState::playing:   state = MediaPlayerDef::PLAYING;   break;
+            case QtRoonTransportApi::EState::paused:    state = MediaPlayerDef::ON;        break;
+            case QtRoonTransportApi::EState::loading:   state = MediaPlayerDef::IDLE;      break;
         }
-        entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::STATE), static_cast<int>(state));
+        entity->updateAttrByIndex(MediaPlayerDef::STATE, static_cast<int>(state));
         if (zone.outputs.length() > 0 && zone.outputs[0].volume != nullptr) {
             const QtRoonTransportApi::Volume* volume = zone.outputs[0].volume;
-            entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::VOLUME), volume->value);
-            entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MUTED), volume->is_muted);
+            entity->updateAttrByIndex(MediaPlayerDef::VOLUME, volume->value);
+            entity->updateAttrByIndex(MediaPlayerDef::MUTED, volume->is_muted);
         }
         if (zone.now_playing != nullptr) {
             const QtRoonTransportApi::NowPlaying* np = zone.now_playing;
             if (!np->image_key.isEmpty())
-                entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIAIMAGE), _imageUrl + np->image_key + "?scale=fit&width=256&height=256");
+                entity->updateAttrByIndex(MediaPlayerDef::MEDIAIMAGE, _imageUrl + np->image_key + "?scale=fit&width=256&height=256");
             else
-                entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIAIMAGE), "");
-            entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIAARTIST), np->two_line->line2);
-            entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIATITLE), np->two_line->line1);
+                entity->updateAttrByIndex(MediaPlayerDef::MEDIAIMAGE, "");
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIAARTIST, np->two_line->line2);
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIATITLE, np->two_line->line1);
         }
         else {
-            entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIAIMAGE), "");
-            entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIAARTIST), "");
-            entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIATITLE), "");
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIAIMAGE, "");
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIAARTIST, "");
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIATITLE, "");
         }
-        entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::SOURCE), "");
-        entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::MEDIATYPE), "");
+        entity->updateAttrByIndex(MediaPlayerDef::SOURCE, "");
+        entity->updateAttrByIndex(MediaPlayerDef::MEDIATYPE, "");
     }
 }
 void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result) {
@@ -661,7 +660,7 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
         map["level"] = -1;
     }
     EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
-    entity->updateAttrByIndex(static_cast<int>(MediaPlayerDef::Attributes::BROWSERESULT), map);
+    entity->updateAttrByIndex(MediaPlayerDef::BROWSERESULT, map);
     /*
     QVariantMap     resultMap;
     resultMap["browseResult"] = map;
