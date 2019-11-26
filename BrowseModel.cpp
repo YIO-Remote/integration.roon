@@ -35,3 +35,22 @@ QHash<int, QByteArray> BrowseModel::roleNames() const {
     roles[ImageUrlRole] = "image_url";
     return roles;
 }
+
+QString BrowseModel::getKey (int index) {
+    if (index >= _items.length())
+        return "";
+    return _items[index].item_key();
+}
+QVariantMap BrowseModel::getItem (int index) {
+    QVariantMap map;
+    if (index < _items.length()) {
+        ModelItem item = _items.value(index);
+        map["item_key"] = item.item_key();
+        map["title"] = item.title();
+        map["sub_title"] = item.sub_title();
+        map["image_url"] = item.image_url();
+        map["input_prompt"] = item.input_prompt();
+    }
+    return map;
+}
+

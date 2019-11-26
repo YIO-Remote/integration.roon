@@ -8,6 +8,8 @@
 class ModelItem
 {
 public:
+    ModelItem ()
+    {}
     ModelItem (const QtRoonBrowseApi::BrowseItem& item, const QString& url) :
         _item_key(item.item_key),
         _title(item.title),
@@ -16,6 +18,16 @@ public:
         _input_prompt(item.input_prompt == nullptr ? "" : item.input_prompt->prompt)
     {
     }
+    /*
+    ModelItem (const ModelItem& item) :
+        _item_key(item.item_key()),
+        _title(item.title()),
+        _sub_title(item.sub_title()),
+        _image_url(item.image_url()),
+        _input_prompt(item.input_prompt())
+    {
+    }
+    */
     QString item_key()      const { return _item_key; }
     QString title()         const { return _title; }
     QString sub_title()     const { return _sub_title; }
@@ -39,6 +51,9 @@ public:
 
     explicit BrowseModel(QObject* parent = nullptr);
     ~BrowseModel();
+
+    Q_INVOKABLE QString getKey (int index);
+    Q_INVOKABLE QVariantMap getItem (int index);
 
     void begin () {
         beginInsertRows(QModelIndex(), 0, rowCount() - 1);
