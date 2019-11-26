@@ -6,11 +6,11 @@ DEFINES     += DEBUG
 include(../remote-software/qmake-target-platform.pri)
 include(../remote-software/qmake-destination-path.pri)
 
-HEADERS         = YioRoon.h QtRoonApi.h QtRoonBrowseApi.h QtRoonTransportApi.h QtRoonStatusApi.h QtRoonDiscovery.h \
+HEADERS         = YioRoon.h QtRoonApi.h QtRoonBrowseApi.h QtRoonTransportApi.h QtRoonStatusApi.h QtRoonDiscovery.h BrowseModel.h \
                   ../remote-software/sources/integrations/integration.h \
-                  ../remote-software/sources/integrations/integrationinterface.h \
+                  ../remote-software/sources/integrations/integrationinterface.h
 
-SOURCES         = YioRoon.cpp QtRoonApi.cpp QtRoonBrowseApi.cpp QtRoonTransportApi.cpp QtRoonStatusApi.cpp QtRoonDiscovery.cpp
+SOURCES         = YioRoon.cpp QtRoonApi.cpp QtRoonBrowseApi.cpp QtRoonTransportApi.cpp QtRoonStatusApi.cpp QtRoonDiscovery.cpp BrowseModel.cpp \
 
 TARGET          = roon
 

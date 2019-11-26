@@ -1,0 +1,4 @@
+#ifndef BROWSEMODEL_H
+#define BROWSEMODEL_H
+
+#endif // BROWSEMODEL_H

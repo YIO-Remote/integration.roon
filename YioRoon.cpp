@@ -576,11 +576,17 @@ void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone,
     }
 }
 void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result) {
+#if !USE_MODEL
     QVariantList    list;
+#endif
     QStringList     playCommands;
     int             level = 0;
 
     int idx = ctx.index;
+
+#if USE_MODEL
+    _model.clear();
+#endif
 
     QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
     items.clear();
@@ -638,17 +644,25 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
         entityItem["item_key"] = item.item_key;
         entityItem["title"] = item.title;
         entityItem["sub_title"] = item.subtitle;
+        QString url = "";
         if (item.input_prompt != nullptr)
             entityItem["input_prompt"] = item.input_prompt->prompt;
-        if (!item.image_key.isEmpty())
-            entityItem["image_url"] = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
+        if (item.image_key.isEmpty())
+            url = "qrc:/images/mini-music-player/no_image.png";
         else
-            entityItem["image_url"] = "";
+            url = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
+        entityItem["image_url"] = url;
+#if USE_MODEL
+        _model.addItem(item, url);
+#else
         list.append(entityItem);
+#endif
     }
 
     QVariantMap     map;
+#if !USE_MODEL
     map["items"] = list;
+#endif
     map["playCommands"] = playCommands;
     map["type"] = browseType;
     if (result.list != nullptr) {
@@ -660,12 +674,13 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
         map["level"] = -1;
     }
     EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
+#if USE_MODEL
+    MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
+    _model.begin();
+    _model.end();
+    mediaPlayer->setModel(&_model);
+#endif
     entity->updateAttrByIndex(MediaPlayerDef::BROWSERESULT, map);
-    /*
-    QVariantMap     resultMap;
-    resultMap["browseResult"] = map;
-    _entities->update(ctx.entityId, resultMap);
-    */
 }
 void YioRoon::updateError (YioContext& ctx, const QString& error)
 {
