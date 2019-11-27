@@ -1,6 +1,5 @@
 #define PERF_TEST   0
 #include "YioRoon.h"
-#include "../remote-software/sources/entities/mediaplayer.h"
 #include "../remote-software/sources/configinterface.h"
 #include "../remote-software/sources/entities/mediaplayerinterface.h"
 
@@ -180,16 +179,21 @@ void YioRoon::connect()
     if (_contexts.length() == 0) {
         QVariantList emptyList;
         QStringList emptyButtons;
-        QList<QObject*> list = _entities->getByIntegration(integrationId());
+        QList<EntityInterface*> list = _entities->getByIntegration(integrationId());
         for (int i = 0; i < list.length(); i++) {
-            Entity* entity = static_cast<Entity*>(list[i]);
+            EntityInterface* entity = list[i];
             _contexts.append(YioContext(i, entity->entity_id(), entity->friendly_name()));
+#if USE_MODEL
+            MediaPlayerInterface* mpIf = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
+            mpIf->setModel(&_model);
+#else
             QVariantMap     map;
             map["items"] = emptyList;
             map["playCommands"] = emptyButtons;
             QVariantMap     result;
             result["browseResult"] = map;
             _entities->update(entity->entity_id(), result);
+#endif
         }
         _items = new QList<QtRoonBrowseApi::BrowseItem> [static_cast<size_t>(list.length())];
     }
@@ -658,11 +662,17 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
         list.append(entityItem);
 #endif
     }
-
+    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
+#if USE_MODEL
+    _model.setHeader(browseType, result.list != nullptr ? result.list->title : "", result.list != nullptr ? result.list->level : -1);
+    _model.setPlayCommands(playCommands);
+    MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
+    _model.begin();
+    _model.end();
+    mediaPlayer->setModel(&_model);
+#else
     QVariantMap     map;
-#if !USE_MODEL
     map["items"] = list;
-#endif
     map["playCommands"] = playCommands;
     map["type"] = browseType;
     if (result.list != nullptr) {
@@ -673,14 +683,8 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
         map["title"] = "";
         map["level"] = -1;
     }
-    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
-#if USE_MODEL
-    MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
-    _model.begin();
-    _model.end();
-    mediaPlayer->setModel(&_model);
-#endif
     entity->updateAttrByIndex(MediaPlayerDef::BROWSERESULT, map);
+#endif
 }
 void YioRoon::updateError (YioContext& ctx, const QString& error)
 {
