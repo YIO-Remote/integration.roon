@@ -60,11 +60,16 @@ public:
     Q_PROPERTY(QString  input_prompt    READ input_prompt   CONSTANT)
 };
 
-class ModelHeader
+class ModelHeader : public QObject
 {
+    Q_OBJECT
 public:
-    ModelHeader ()
+    explicit ModelHeader (QObject* parent = nullptr) : QObject(parent)
     {}
+    Q_PROPERTY(QString  type  READ type  CONSTANT)
+    Q_PROPERTY(QString  title READ title CONSTANT)
+    Q_PROPERTY(int      level READ level CONSTANT)
+
     QString type()                          const { return _type; }
     QString title()                         const { return _title; }
     int     level()                         const { return _level; }
@@ -75,18 +80,6 @@ private:
     QString _type;
     QString _title;
     int     _level;
-};
-
-// for use in QML
-class QModelHeader : public QObject, public ModelHeader
-{
-    Q_OBJECT
-public:
-    explicit QModelHeader (QObject* parent = nullptr) : QObject(parent)
-    {}
-    Q_PROPERTY(QString  type  READ type  CONSTANT)
-    Q_PROPERTY(QString  title READ title CONSTANT)
-    Q_PROPERTY(int      level READ level CONSTANT)
 };
 
 class BrowseModel : public QAbstractListModel
@@ -100,12 +93,12 @@ public:
     explicit BrowseModel(QObject* parent = nullptr);
     ~BrowseModel();
 
-    Q_PROPERTY  (QModelHeader*  header          READ header         NOTIFY headerChanged)
+    Q_PROPERTY  (ModelHeader*   header          READ header         NOTIFY headerChanged)
     Q_PROPERTY  (QStringList    playCommands    READ playCommands   NOTIFY playCommandsChanged)
-    Q_INVOKABLE QString         getKey (int index);
-    Q_INVOKABLE QObject*        getItem (int index);
+    Q_INVOKABLE  QString        getKey  (int index);
+    Q_INVOKABLE  QObject*       getItem (int index);
 
-    QModelHeader* header ()
+    ModelHeader* header ()
     {
         return &_header;
     }
@@ -148,8 +141,7 @@ protected:
 
 private:
     QList<ModelItem>    _items;
-    //QModelItem          _selectedItem;      // alternative dynamic allocation ? who will free it
-    QModelHeader        _header;
+    ModelHeader         _header;
     QStringList         _playCommands;
 };
 #endif // BROWSEMODEL_H
