@@ -1,4 +1,3 @@
-#define PERF_TEST   0
 #include "YioRoon.h"
 #include "../remote-software/sources/configinterface.h"
 #include "../remote-software/sources/entities/mediaplayerinterface.h"
@@ -149,33 +148,16 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
         }
     }
     ConfigInterface* configInterface = qobject_cast<ConfigInterface *>(configObj);
-    QVariant appPath = configInterface->getContextProperty ("configPath");
+    QString configPath = configInterface->getContextProperty ("configPath").toString() + "/roon";
+    if (!QDir(configPath).exists())
+        QDir().mkdir(configPath);
     _entities = qobject_cast<EntitiesInterface *>(entities);
     _notifications = qobject_cast<NotificationsInterface *> (notifications);
-    _roonApi.setup(_url, appPath.toString());
+    _roonApi.setup(_url, configPath);
 }
 
 void YioRoon::connect()
 {
-#if PERF_TEST
-    if (true) {        // TEST
-        EntityInterface* entity = _entities->getEntityInterface("media_player.work");
-        QString friendly = entity->friendly_name();
-        MediaPlayerInterface* player = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
-        int index = entity->getAttrIndex("volume");
-        QVariantMap lmap;
-        lmap["volume"] = 55.0;
-        entity->update(lmap);
-        double vol = player->volume();
-        entity->updateAttrByIndex(index, 66);
-        vol = player->volume();
-        entity->updateAttrByName("volume", 77);
-        vol = player->volume();
-
-        entity->updateAttrByName("mediaArtist", "Maxl");
-        QString artist = player->mediaArtist();
-    }
-#endif
     if (_contexts.length() == 0) {
         QVariantList emptyList;
         QStringList emptyButtons;
@@ -183,17 +165,8 @@ void YioRoon::connect()
         for (int i = 0; i < list.length(); i++) {
             EntityInterface* entity = list[i];
             _contexts.append(YioContext(i, entity->entity_id(), entity->friendly_name()));
-#if USE_MODEL
             MediaPlayerInterface* mpIf = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
             mpIf->setModel(&_model);
-#else
-            QVariantMap     map;
-            map["items"] = emptyList;
-            map["playCommands"] = emptyButtons;
-            QVariantMap     result;
-            result["browseResult"] = map;
-            _entities->update(entity->entity_id(), result);
-#endif
         }
         _items = new QList<QtRoonBrowseApi::BrowseItem> [static_cast<size_t>(list.length())];
     }
@@ -580,17 +553,11 @@ void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone,
     }
 }
 void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result) {
-#if !USE_MODEL
-    QVariantList    list;
-#endif
     QStringList     playCommands;
     int             level = 0;
 
     int idx = ctx.index;
-
-#if USE_MODEL
     _model.clear();
-#endif
 
     QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
     items.clear();
@@ -644,47 +611,21 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
                 }
             }
         }
-        QVariantMap entityItem;
-        entityItem["item_key"] = item.item_key;
-        entityItem["title"] = item.title;
-        entityItem["sub_title"] = item.subtitle;
         QString url = "";
-        if (item.input_prompt != nullptr)
-            entityItem["input_prompt"] = item.input_prompt->prompt;
         if (item.image_key.isEmpty())
             url = "qrc:/images/mini-music-player/no_image.png";
         else
             url = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
-        entityItem["image_url"] = url;
-#if USE_MODEL
-        _model.addItem(item, url);
-#else
-        list.append(entityItem);
-#endif
+        ModelItem  modelItem (item.item_key, item.title, item.subtitle, url, item.input_prompt == nullptr ? "" : item.input_prompt->prompt);
+        _model.addItem(modelItem);
     }
     EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
-#if USE_MODEL
     _model.setHeader(browseType, result.list != nullptr ? result.list->title : "", result.list != nullptr ? result.list->level : -1);
     _model.setPlayCommands(playCommands);
     MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
     _model.begin();
     _model.end();
     mediaPlayer->setModel(&_model);
-#else
-    QVariantMap     map;
-    map["items"] = list;
-    map["playCommands"] = playCommands;
-    map["type"] = browseType;
-    if (result.list != nullptr) {
-        map["title"] = result.list->title;
-        map["level"] = result.list->level;
-    }
-    else {
-        map["title"] = "";
-        map["level"] = -1;
-    }
-    entity->updateAttrByIndex(MediaPlayerDef::BROWSERESULT, map);
-#endif
 }
 void YioRoon::updateError (YioContext& ctx, const QString& error)
 {

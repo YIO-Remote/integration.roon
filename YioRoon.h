@@ -1,4 +1,3 @@
-#define USE_MODEL 1
 #pragma once
 #include <QtCore/QObject>
 #include "QtRoonApi.h"
@@ -10,9 +9,7 @@
 #include "../remote-software/sources/entities/entitiesinterface.h"
 #include "../remote-software/sources/notificationsinterface.h"
 
-#if USE_MODEL
 #include "BrowseModel.h"
-#endif
 
 class Roon : public IntegrationInterface
 {
@@ -134,9 +131,7 @@ private:
     QList<YioContext>                   _contexts;
     QStringList                         _notFound;
     bool                                _cmdsForItem;
-#if USE_MODEL
     BrowseModel                         _model;
-#endif
     static YioRoon*                     _instance;
     static QLoggingCategory             _log;
 

@@ -329,7 +329,7 @@ bool QtRoonApi::saveState() {
     map["paired_core_id"] = _roonState.paired_core_id;
     QJsonDocument doc = QJsonDocument::fromVariant(map);
     QString json(doc.toJson(QJsonDocument::JsonFormat::Compact));
-    QFile file(_directory + "roonState.json");
+    QFile file(_directory + "/roonState.json");
 
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qCWarning(_log) << "saveState can't create " << file.fileName();
@@ -340,7 +340,7 @@ bool QtRoonApi::saveState() {
     return true;
 }
 bool QtRoonApi::loadState() {
-    QFile	file(_directory + "roonState.json");
+    QFile	file(_directory + "/roonState.json");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         qCWarning(_log) << "loadState can't open " << file.fileName();
         return false;

@@ -1,29 +1,11 @@
 #include "BrowseModel.h"
 
-QVariantMap ModelItem::toVariantMap() const
-{
-    QVariantMap map;
-    map["item_key"] = _item_key;
-    map["title"] = _title;
-    map["sub_title"] = _sub_title;
-    map["image_url"] = _image_url;
-    map["input_prompt"] = _input_prompt;
-    return map;
-}
-QVariantMap ModelHeader::toVariantMap() const
-{
-    QVariantMap map;
-    map["type"] = _type;
-    map["title"] = _title;
-    map["level"] = _level;
-    return map;
-}
-
 BrowseModel::BrowseModel(QObject* parent) :
     QAbstractListModel(parent)
 {}
 BrowseModel::~BrowseModel()
-{}
+{
+}
 
 void BrowseModel::clear() {
     if (_items.count() > 0) {
@@ -36,10 +18,6 @@ void BrowseModel::setHeader (const QString& type, const QString& title, int leve
 {
     _header.setType(type); _header.setTitle(title); _header.setLevel(level);
     emit headerChanged();
-    setHeaderData(0, Qt::Orientation::Vertical, type, TypeRole);
-    setHeaderData(0, Qt::Orientation::Vertical, title, TitleRole);
-    setHeaderData(0, Qt::Orientation::Vertical, level, LevelRole);
-    emit headerDataChanged(Qt::Orientation::Vertical, 0, 0);
 }
 void BrowseModel::setPlayCommands(const QStringList& playCommands)
 {
@@ -62,17 +40,6 @@ QVariant BrowseModel::data(const QModelIndex & index, int role) const
     }
     return QVariant();
 }
-QVariant BrowseModel::headerData (int section, Qt::Orientation orientation, int role) const
-{
-    Q_UNUSED(section)
-    Q_UNUSED(orientation)
-    switch (role) {
-        case TypeRole:     return _header.type();
-        case TitleRole:    return _header.title();
-        case LevelRole:    return _header.level();
-    }
-    return QVariant();
-}
 
 QHash<int, QByteArray> BrowseModel::roleNames() const {
     QHash<int, QByteArray> roles;
@@ -81,7 +48,6 @@ QHash<int, QByteArray> BrowseModel::roleNames() const {
     roles[SubTitleRole] = "sub_title";
     roles[ImageUrlRole] = "image_url";
     roles[InputPromptRole] = "input_prompt";
-    roles[TypeRole] = "type";
     return roles;
 }
 
@@ -90,10 +56,12 @@ QString BrowseModel::getKey (int index) {
         return "";
     return _items[index].item_key();
 }
-QVariantMap BrowseModel::getItem (int index) {
+
+QObject* BrowseModel::getItem (int index) {
     if (index < _items.length()) {
-        return _items.value(index).toVariantMap();
+        // magically freed by the Qt Engine
+        return new QModelItem(_items.value(index), parent());
     }
-    return QVariantMap();
+    return nullptr;
 }
 
