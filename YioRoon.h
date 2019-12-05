@@ -23,7 +23,11 @@ public:
     virtual ~Roon() override {
     }
 
-    void        create              (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj) override;
+    void create         (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj) override;
+    void setLogEnabled  (QtMsgType msgType, bool enable) override
+    {
+        _log.setEnabled(msgType, enable);
+    }
 
 public slots:
     void        onRoonDiscovered    (QMap<QString, QVariantMap>);
@@ -42,8 +46,10 @@ public:
     virtual     ~YioRoon            () override;
 
     Q_INVOKABLE void setup  	    (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj);
-    Q_INVOKABLE void connect	    ();
-    Q_INVOKABLE void disconnect	    ();
+    void connect                    () override;
+    void disconnect                 () override;
+    void enterStandby               () override;
+    void leaveStandby               () override;
 
     static QLoggingCategory& Log    () { return _log; }
 
@@ -120,6 +126,7 @@ private:
     QtRoonApi				_roonApi;
     QtRoonBrowseApi			_browseApi;
     QtRoonTransportApi			_transportApi;
+    int                                 _subscriptionKey;
     int					_numItems;
     bool                                _playFromThere;
     QString                             _url;

@@ -97,15 +97,17 @@ void QtRoonApi::addService(const QString& serviceName, IRoonCallback* service)
     _services.insert(serviceName, service);
     _register.provided_services.append(serviceName);
 }
-void QtRoonApi::sendSubscription(const QString& path, IRoonCallback* callback)
+int QtRoonApi::sendSubscription(const QString& path, IRoonCallback* callback, int subscriptionKey)
 {
     QVariantMap map;
-    int subscriptionKey = _requests.count();
+    if (subscriptionKey < 0)
+        subscriptionKey = _requests.count();
     map["subscription_key"] = subscriptionKey;
     QJsonDocument doc = QJsonDocument::fromVariant(map);
     QString json = doc.toJson(QJsonDocument::JsonFormat::Compact);
 
     send(path, callback, &json);
+    return subscriptionKey;
 }
 int QtRoonApi::send(const QString& path, IRoonCallback* callback, const QString* body) {
     int requestId = _requestId;

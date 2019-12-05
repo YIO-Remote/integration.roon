@@ -143,7 +143,8 @@ class QtRoonTransportApi : public QObject, public IRoonCallback, public IRoonPai
 
     explicit QtRoonTransportApi(QtRoonApi& roonApi, TCallback callback = nullptr, QObject* parent = nullptr);
         virtual	void            OnReceived(const ReceivedContent& content) override;
-        void			subscribeZones	();
+        int			subscribeZones	();
+        void			unsubscribeZones(int subscriptionKey);
         QList<Zone>*		getZones	();
         QMap<QString, Zone>&    zones		() { return _zones; }
         const Zone&		getZone		(const QString & zone_id);

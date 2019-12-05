@@ -340,6 +340,9 @@ void QtRoonTransportApi::OnReceived(const ReceivedContent& content)
         if (zChg)
             emit zonesChanged();
     }
+    else if (content._command == QtRoonApi::Unsubscribed) {
+
+    }
     else {
         if (_callback != nullptr) {
             _callback(content._requestId, content._command.isEmpty() ? "Error" : content._command);
@@ -366,11 +369,15 @@ QList<QtRoonTransportApi::Zone>* QtRoonTransportApi::getZones() {
     return list;
 }
 
-
-void QtRoonTransportApi::subscribeZones()
+int QtRoonTransportApi::subscribeZones()
 {
     qCDebug(_roonApi.Log()) << "Transport.subscribeZones";
-    _roonApi.sendSubscription(QtRoonApi::ServiceTransport + "/subscribe_zones", this);
+    return _roonApi.sendSubscription(QtRoonApi::ServiceTransport + "/subscribe_zones", this);
+}
+void QtRoonTransportApi::unsubscribeZones(int subscriptionKey)
+{
+    qCDebug(_roonApi.Log()) << "Transport.unsubscribeZones";
+    _roonApi.sendSubscription(QtRoonApi::ServiceTransport + "/unsubscribe_zones", this, subscriptionKey);
 }
 
 int QtRoonTransportApi::control(const QString& zone_or_output_id, EControl control, TCallback callback) {

@@ -67,7 +67,7 @@ public:
     void		reply			(const QString& command, int requestId, bool cont = false, QString* body = nullptr);
     void		replyAll		(QMap<int,int> subscriptions, const QString& command, QString* body = nullptr);
     void		addService		(const QString& serviceName, IRoonCallback* service);
-    void		sendSubscription	(const QString& path, IRoonCallback* callback);
+    int                 sendSubscription	(const QString& path, IRoonCallback* callback, int subscriptionKey = -1);
 
     virtual void	OnReceived		(const ReceivedContent& content) override;
     QLoggingCategory&   Log                     () { return _log; }

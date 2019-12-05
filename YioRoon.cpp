@@ -60,6 +60,7 @@ YioRoon::YioRoon(QObject* parent) :
     _roonApi("ws://192.168.1.100:9100/api", "C:\\Temp\\", _reg, _log),
     _browseApi(_roonApi, this),
     _transportApi(_roonApi, transportCallback),
+    _subscriptionKey(-1),
     _numItems(50),
     _items(nullptr),
     _cmdsForItem(true)
@@ -131,21 +132,6 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
             _url = "ws://" + ip + "/api";
             _imageUrl = "http://" + ip + "/api/image/";
         }
-        else if (iter.key() == "log") {
-            const QString& severity = iter.value().toString();
-            if (severity == "debug") {
-                _log.setEnabled(QtMsgType::QtDebugMsg, true);
-            }
-            else if (severity == "info") {
-                _log.setEnabled(QtMsgType::QtDebugMsg, false);
-                _log.setEnabled(QtMsgType::QtInfoMsg, true);
-            }
-            else if (severity == "warning") {
-                _log.setEnabled(QtMsgType::QtDebugMsg, false);
-                _log.setEnabled(QtMsgType::QtInfoMsg, false);
-                _log.setEnabled(QtMsgType::QtWarningMsg, true);
-            }
-        }
     }
     ConfigInterface* configInterface = qobject_cast<ConfigInterface *>(configObj);
     QString configPath = configInterface->getContextProperty ("configPath").toString() + "/roon";
@@ -179,6 +165,14 @@ void YioRoon::disconnect()
     _roonApi.close();
     _contexts.clear();
     delete [] _items;
+}
+void YioRoon::enterStandby()
+{
+    _transportApi.unsubscribeZones(_subscriptionKey);
+}
+void YioRoon::leaveStandby()
+{
+    _subscriptionKey = _transportApi.subscribeZones();
 }
 void YioRoon::sendCommand(const QString& type, const QString& id, const QString& cmd, const QVariant& param)
 {
@@ -384,7 +378,7 @@ void YioRoon::onError (const QString& error)
 void YioRoon::OnPaired(const RoonCore& core)
 {
     Q_UNUSED(core)
-    _transportApi.subscribeZones();
+    _subscriptionKey = _transportApi.subscribeZones();
 }
 
 void YioRoon::OnUnpaired(const RoonCore& core)
