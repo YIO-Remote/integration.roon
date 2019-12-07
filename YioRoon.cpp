@@ -2,6 +2,9 @@
 #include "../remote-software/sources/configinterface.h"
 #include "../remote-software/sources/entities/mediaplayerinterface.h"
 
+IntegrationInterface::~IntegrationInterface()
+{}
+
 Roon::Roon(QObject* parent) :
     _log("roon"),
     _discovery(_log, parent)
@@ -115,17 +118,11 @@ YioRoon::~YioRoon()
 
 void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *notifications, QObject* api, QObject *configObj)
 {
-    Q_UNUSED(notifications)
     Q_UNUSED(api)
-    Q_UNUSED(configObj)
+    Integration::setup (config, entities);
 
-    _log.setEnabled(QtMsgType::QtDebugMsg, false);     // Default, only debug disabled
     for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
-        if (iter.key() == "friendly_name")
-            setFriendlyName(iter.value().toString());
-        else if (iter.key() == "id")
-            setIntegrationId(iter.value().toString());
-        else if (iter.key() == "ip") {
+        if (iter.key() == "ip") {
             QString ip = iter.value().toString();
             if (!ip.contains(':'))
                 ip += ":9100";
@@ -137,7 +134,6 @@ void YioRoon::setup (const QVariantMap& config, QObject *entities, QObject *noti
     QString configPath = configInterface->getContextProperty ("configPath").toString() + "/roon";
     if (!QDir(configPath).exists())
         QDir().mkdir(configPath);
-    _entities = qobject_cast<EntitiesInterface *>(entities);
     _notifications = qobject_cast<NotificationsInterface *> (notifications);
     _roonApi.setup(_url, configPath);
 }
@@ -147,7 +143,7 @@ void YioRoon::connect()
     if (_contexts.length() == 0) {
         QVariantList emptyList;
         QStringList emptyButtons;
-        QList<EntityInterface*> list = _entities->getByIntegration(integrationId());
+        QList<EntityInterface*> list = m_entities->getByIntegration(integrationId());
         for (int i = 0; i < list.length(); i++) {
             EntityInterface* entity = list[i];
             _contexts.append(YioContext(i, entity->entity_id(), entity->friendly_name()));
@@ -512,7 +508,7 @@ void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone,
         Q_PROPERTY  (QString        source      READ    source      NOTIFY      sourceChanged)
     */
 
-    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
+    EntityInterface* entity = m_entities->getEntityInterface(ctx.entityId);
     if (!seekChanged) {
         MediaPlayerDef::States state;
         switch (zone.state) {
@@ -613,7 +609,7 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
         ModelItem  modelItem (item.item_key, item.title, item.subtitle, url, item.input_prompt == nullptr ? "" : item.input_prompt->prompt);
         _model.addItem(modelItem);
     }
-    EntityInterface* entity = static_cast<EntityInterface*>(_entities->getEntityInterface(ctx.entityId));
+    EntityInterface* entity = m_entities->getEntityInterface(ctx.entityId);
     _model.setHeader(browseType, result.list != nullptr ? result.list->title : "", result.list != nullptr ? result.list->level : -1);
     _model.setPlayCommands(playCommands);
     MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());

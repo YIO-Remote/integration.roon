@@ -5,18 +5,18 @@
 #include "QtRoonBrowseApi.h" 
 #include "QtRoonDiscovery.h"
 #include "../remote-software/sources/integrations/integration.h"
-#include "../remote-software/sources/integrations/integrationinterface.h"
+#include "../remote-software/sources/integrations/plugininterface.h"
 #include "../remote-software/sources/entities/entitiesinterface.h"
 #include "../remote-software/sources/notificationsinterface.h"
 
 #include "BrowseModel.h"
 
-class Roon : public IntegrationInterface
+class Roon : public PluginInterface
 {
     Q_OBJECT
     //Q_DISABLE_COPY(Roon)
-    Q_PLUGIN_METADATA(IID "YIO.IntegrationInterface" FILE "roon.json")
-    Q_INTERFACES(IntegrationInterface)
+    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "roon.json")
+    Q_INTERFACES(PluginInterface)
 
 public:
     explicit Roon(QObject* parent = nullptr);
@@ -50,12 +50,12 @@ public:
     void disconnect                 () override;
     void enterStandby               () override;
     void leaveStandby               () override;
+    void sendCommand                (const QString& type, const QString& entity_id, const QString& command, const QVariant& param) override;
 
     static QLoggingCategory& Log    () { return _log; }
 
 
 public slots:
-    void        sendCommand         (const QString& type, const QString& entity_id, const QString& command, const QVariant& param);
     void        onZonesChanged      ();
     void        onZoneSeekChanged   (const QtRoonTransportApi::Zone& zone);
     void        onError             (const QString& error);
@@ -131,7 +131,6 @@ private:
     bool                                _playFromThere;
     QString                             _url;
     QString                             _imageUrl;
-    EntitiesInterface*                  _entities;
     NotificationsInterface*             _notifications;
     QList<Action>                       _actions;
     QList<QtRoonBrowseApi::BrowseItem>* _items;
