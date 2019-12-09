@@ -29,5 +29,4 @@ unix {
     INSTALLS += target
 }
 
-DISTFILES += \
-    todo.txt
+DISTFILES +=

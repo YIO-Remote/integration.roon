@@ -1,3 +1,25 @@
+/******************************************************************************
+ *
+ * Copyright (C) 2019 Christian Riedl <ric@rts.co.at>
+ *
+ * This file is part of the YIO-Remote software project.
+ *
+ * YIO-Remote software is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * YIO-Remote software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with YIO-Remote software. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *****************************************************************************/
+
 #include "YioRoon.h"
 #include "../remote-software/sources/configinterface.h"
 #include "../remote-software/sources/entities/mediaplayerinterface.h"
@@ -5,13 +27,13 @@
 IntegrationInterface::~IntegrationInterface()
 {}
 
-Roon::Roon(QObject* parent) :
+RoonPlugin::RoonPlugin(QObject* parent) :
     _log("roon"),
     _discovery(_log, parent)
 {
 }
 
-void Roon::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
+void RoonPlugin::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
 {
     QMap<QObject *, QVariant>   returnData;
     QVariantList                data;
@@ -34,11 +56,11 @@ void Roon::create(const QVariantMap &config, QObject *entities, QObject *notific
     if (data.length() > 0)
         emit createDone(returnData);
     else {
-        connect (&_discovery, &QtRoonDiscovery::roonDiscovered, this, &Roon::onRoonDiscovered);
+        connect (&_discovery, &QtRoonDiscovery::roonDiscovered, this, &RoonPlugin::onRoonDiscovered);
         _discovery.startDiscovery(1000, true);
     }
 }
-void Roon::onRoonDiscovered (QMap<QString, QVariantMap> soodmaps)
+void RoonPlugin::onRoonDiscovered (QMap<QString, QVariantMap> soodmaps)
 {
     QVariantMap roonsmap;
 
