@@ -192,7 +192,7 @@ void YioRoon::leaveStandby()
 {
     _subscriptionKey = _transportApi.subscribeZones();
 }
-void YioRoon::sendCommand(const QString& type, const QString& id, const QString& cmd, const QVariant& param)
+void YioRoon::sendCommand(const QString& type, const QString& id, int cmd, const QVariant& param)
 {
 /*
     "SOURCE", "APP_NAME",
@@ -216,82 +216,94 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
 
     const QtRoonTransportApi::Zone& zone = _transportApi.getZone(ctx.zoneId);
     const QtRoonTransportApi::Output& output = zone.outputs[0];
-    if (cmd == "VOLUME_SET") {
-        _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::absolute, param.toInt());
-    }
-    else if (cmd == "VOLUME_UP") {
-        _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, 1);
-    }
-    else if (cmd == "VOLUME_DOWN") {
-        _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, -1);
-    }
-    else if (cmd == "MUTE_SET") {
-        _transportApi.mute(output.output_id, param.toBool() ? QtRoonTransportApi::EMute::mute : QtRoonTransportApi::EMute::unmute);
-    }
-    else if (cmd == "PLAY") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::play);
-    }
-    else if (cmd == "PAUSE") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::pause);
-    }
-    else if (cmd == "STOP") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::stop);
-    }
-    else if (cmd == "PREVIOUS") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::previous);
-    }
-    else if (cmd == "NEXT") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::next);
-    }
-    else if (cmd == "BROWSE") {
-        QString cmd = param.toString();
-        if (cmd == "TOP")
-            browse(ctx, true);
-        else if (cmd == "BACK")
-            browseBack(ctx);
-        else {
-            const QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
-            for (int i = 0; i < items.length(); i++) {
-                if (items[i].item_key == cmd) {
-                    browse(ctx, items, i, false);
-                    return;
-                }
-            }
-            const Action* action = getActionYio(cmd);
-            if (action == nullptr) {
-                qCWarning(_log) << "Can't find Browse command " << cmd;
-                return;
-            }
-            for (int i = 0; i < items.length(); i++) {
-                if (items[i].hint == "action_list") {
-                    const Action* actionList = getActionRoon(items[i].title);
-                    if (actionList != nullptr) {
-                       ctx.forcedAction = cmd;
-                        browseAction (ctx, items[i].item_key);
+    switch (static_cast<MediaPlayerDef::Commands>(cmd)) {
+        case MediaPlayerDef::C_VOLUME_SET:
+            _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::absolute, param.toInt());
+            break;
+        case MediaPlayerDef::C_VOLUME_UP:
+            _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, 1);
+            break;
+        case MediaPlayerDef::C_VOLUME_DOWN:
+            _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, -1);
+            break;
+        case MediaPlayerDef::C_MUTE:
+            _transportApi.mute(output.output_id, param.toBool() ? QtRoonTransportApi::EMute::mute : QtRoonTransportApi::EMute::unmute);
+            break;
+        case MediaPlayerDef::C_PLAY:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::play);
+            break;
+        case MediaPlayerDef::C_PAUSE:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::pause);
+            break;
+        case MediaPlayerDef::C_STOP:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::stop);
+            break;
+        case MediaPlayerDef::C_PREVIOUS:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::previous);
+            break;
+        case MediaPlayerDef::C_NEXT:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::next);
+            break;
+        case MediaPlayerDef::C_BROWSE: {
+                QString cmd = param.toString();
+                if (cmd == "TOP")
+                    browse(ctx, true);
+                else if (cmd == "BACK")
+                    browseBack(ctx);
+                else {
+                    const QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
+                    for (int i = 0; i < items.length(); i++) {
+                        if (items[i].item_key == cmd) {
+                            browse(ctx, items, i, false);
+                            return;
+                        }
+                    }
+                    const Action* action = getActionYio(cmd);
+                    if (action == nullptr) {
+                        qCWarning(_log) << "Can't find Browse command " << cmd;
                         return;
                     }
-                }
-                if (items[i].hint == "action") {
-                    if (items[i].title == action->roonName) {
-                        browse(ctx, items, i, true);
-                        return;
+                    for (int i = 0; i < items.length(); i++) {
+                        if (items[i].hint == "action_list") {
+                            const Action* actionList = getActionRoon(items[i].title);
+                            if (actionList != nullptr) {
+                               ctx.forcedAction = cmd;
+                                browseAction (ctx, items[i].item_key);
+                                return;
+                            }
+                        }
+                        if (items[i].hint == "action") {
+                            if (items[i].title == action->roonName) {
+                                browse(ctx, items, i, true);
+                                return;
+                            }
+                        }
                     }
+                    qCWarning(_log) << "Can't find action list" << action->roonName;
                 }
             }
-            qCWarning(_log) << "Can't find action list" << action->roonName;
-        }
-    }
-    else if (cmd.startsWith("play:")){
-        QString pcmd = cmd.mid (5);
-        const Action* action = getActionYio(pcmd);
-        if (action != nullptr) {
-            ctx.forcedAction = pcmd;
-            playMedia(ctx, param.toString(), true);
-        }
-    }
-    else if (cmd.startsWith("search:")){
-        QString scmd = cmd.mid (7);
-        search (ctx, scmd, param.toString());
+            break;
+        case MediaPlayerDef::C_PLAY_ITEM: {
+                QVariantMap map = param.toMap();
+                QString pcmd = map["command"].toString();
+                QString key = map["key"].toString();
+                const Action* action = getActionYio(pcmd);
+                if (action != nullptr) {
+                    ctx.forcedAction = pcmd;
+                    playMedia(ctx, key, true);
+                }
+            }
+            break;
+        case MediaPlayerDef::C_SEARCH_ITEM: {
+                QVariantMap map = param.toMap();
+                QString scmd = map["text"].toString();
+                QString key = map["key"].toString();
+                search (ctx, scmd, key);
+            }
+            break;
+        default:
+            qCWarning(_log) << "Illegal command" << cmd;
+            break;
     }
 }
 void YioRoon::browse(YioContext &ctx, bool fromTop)

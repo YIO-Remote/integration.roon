@@ -72,7 +72,7 @@ public:
     void disconnect                 () override;
     void enterStandby               () override;
     void leaveStandby               () override;
-    void sendCommand                (const QString& type, const QString& entity_id, const QString& command, const QVariant& param) override;
+    void sendCommand                (const QString& type, const QString& entity_id, int command, const QVariant& param) override;
 
     static QLoggingCategory& Log    () { return _log; }
 
