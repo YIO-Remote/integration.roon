@@ -3,19 +3,36 @@ CONFIG      += plugin
 QT          += websockets core quick
 DEFINES     += DEBUG
 
-include(../remote-software/qmake-target-platform.pri)
-include(../remote-software/qmake-destination-path.pri)
+REMOTE_SRC = $$(YIO_SRC)
+isEmpty(REMOTE_SRC) {
+    REMOTE_SRC = $$clean_path($$PWD/../remote-software)
+    warning("Environment variables YIO_SR not defined! Using '$$REMOTE_SRC' for remote-software project.")
+} else {
+    REMOTE_SRC = $$(YIO_SRC)/remote-software
+    message("YIO_SRC is set: using '$$REMOTE_SRC' for remote-software project.")
+}
 
-HEADERS         = YioRoon.h QtRoonApi.h QtRoonBrowseApi.h QtRoonTransportApi.h QtRoonStatusApi.h QtRoonDiscovery.h BrowseModel.h \
-                  ../remote-software/sources/integrations/integration.h \
-                  ../remote-software/sources/integrations/plugininterface.h
+! include($$REMOTE_SRC/qmake-target-platform.pri) {
+    error( "Couldn't find the qmake-target-platform.pri file!" )
+}
+! include($$REMOTE_SRC/qmake-destination-path.pri) {
+    error( "Couldn't find the qmake-destination-path.pri file!" )
+}
 
-SOURCES         = YioRoon.cpp QtRoonApi.cpp QtRoonBrowseApi.cpp QtRoonTransportApi.cpp QtRoonStatusApi.cpp QtRoonDiscovery.cpp BrowseModel.cpp \
+HEADERS         = YioRoon.h QtRoonApi.h QtRoonBrowseApi.h QtRoonTransportApi.h QtRoonStatusApi.h QtRoonDiscovery.h  \
+                  $$REMOTE_SRC/sources/integrations/integration.h \
+                  $$REMOTE_SRC/sources/integrations/plugininterface.h \
+                  $$REMOTE_SRC/components/media_player/sources/searchmodel_mediaplayer.h \
+                  $$REMOTE_SRC/components/media_player/sources/albummodel_mediaplayer.h
+
+SOURCES         = YioRoon.cpp QtRoonApi.cpp QtRoonBrowseApi.cpp QtRoonTransportApi.cpp QtRoonStatusApi.cpp QtRoonDiscovery.cpp  \
+                  $$REMOTE_SRC/components/media_player/sources/searchmodel_mediaplayer.cpp \
+                  $$REMOTE_SRC/components/media_player/sources/albummodel_mediaplayer.cpp
 
 TARGET          = roon
 
-# Configure destination path by "Operating System/Compiler/Processor Architecture/Build Configuration"
-DESTDIR = $$PWD/../binaries/$$DESTINATION_PATH/plugins
+# Configure destination path. DESTDIR is set in qmake-destination-path.pri
+DESTDIR = $$DESTDIR/plugins
 OBJECTS_DIR = $$PWD/build/$$DESTINATION_PATH/obj
 MOC_DIR = $$PWD/build/$$DESTINATION_PATH/moc
 RCC_DIR = $$PWD/build/$$DESTINATION_PATH/qrc

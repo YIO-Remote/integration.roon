@@ -101,12 +101,14 @@ QtRoonApi::QtRoonApi(const QString& url, const QString& directory, RoonRegister&
     //connect(&_webSocket, &QWebSocket::error, this, &QtRoonApi::onError);  not working
     QObject::connect(&_webSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
 
-    loadState();
+    //loadState();
 }
 void QtRoonApi::setup(const QString& url, const QString& directory)
 {
     _url = url;
     _directory = directory;
+
+    loadState();
 }
 void QtRoonApi::open() {
     _webSocket.open(_url);

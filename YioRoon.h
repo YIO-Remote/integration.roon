@@ -19,8 +19,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *****************************************************************************/
-
 #pragma once
+#define NEW_VERSION 1
 #include <QtCore/QObject>
 #include "QtRoonApi.h"
 #include "QtRoonTransportApi.h" 
@@ -31,7 +31,12 @@
 #include "../remote-software/sources/entities/entitiesinterface.h"
 #include "../remote-software/sources/notificationsinterface.h"
 
+#if NEW_VERSION
+#include "../remote-software/components/media_player/sources/albummodel_mediaplayer.h"
+#include "../remote-software/components/media_player/sources/searchmodel_mediaplayer.h"
+#else
 #include "BrowseModel.h"
+#endif
 
 class RoonPlugin : public PluginInterface
 {
@@ -105,18 +110,20 @@ private:
              forcedActions(forcedActions),
              forcedChildActions(forcedChildActions)
          {}
-         QString    roonName;
-         QString    yioName;
-         QString    type;
-         QString    parentTitle;
-         EAction    action;
-         EAction    forcedActions;
-         EAction    forcedChildActions;
+         QString        roonName;
+         QString        yioName;
+         QString        type;
+         QString        parentTitle;
+         EAction        action;
+         EAction        forcedActions;
+         EAction        forcedChildActions;
     };
     enum BrowseMode {
         BROWSE,
         PLAY,
-        ACTION
+        ACTION,
+        GOTOPATH,
+        GETALBUM
     };
 
     struct YioContext : QtRoonBrowseApi::Context {
@@ -130,18 +137,24 @@ private:
             gotoNext(false),
             entityId(entityId),
             friendlyName(friendlyName),
+            searchModel(nullptr),
             goBack(0)
         {}
-        int         index;
-        int         itemIndex;
-        bool        queueFrom;
-        bool        gotoNext;
-        BrowseMode  browseMode;
-        QString     entityId;
-        QString     friendlyName;
-        QString     forcedAction;
-        QStringList path;
-        int         goBack;
+        int                     index;
+        int                     itemIndex;
+        bool                    queueFrom;
+        bool                    gotoNext;
+        BrowseMode              browseMode;
+        QString                 entityId;
+        QString                 friendlyName;
+        QString                 forcedAction;
+        QStringList             path;
+        QStringList             goToPath;
+        QString                 searchText;
+        SearchModel*            searchModel;
+        QStringList             searchKeys;
+        QMap<QString,QString>   albumMap;
+        int                     goBack;
     };
 
     RoonRegister                        _reg;
@@ -171,6 +184,8 @@ private:
     void            browseRefresh           (YioContext& ctx);
     void            playMedia               (YioContext& ctx, const QString& itemKey, bool setItemIndex = false);
     void            search                  (YioContext& ctx, const QString& searchText, const QString& itemKey);
+    void            search                  (YioContext& ctx, const QString& searchText);
+    void            getAlbum                (YioContext& ctx, const QString& itemKey);
 
     virtual void    OnPaired                (const RoonCore& core) override;
     virtual void    OnUnpaired              (const RoonCore& core) override;
@@ -178,6 +193,9 @@ private:
     virtual void    OnLoad                  (const QString& err, QtRoonBrowseApi::Context& context, const QtRoonBrowseApi::LoadResult& content) override;
 
     void            updateItems             (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result);
+    bool            updateSearch            (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result);
+    bool            updateSearchList        (YioContext& ctx, const SearchModelItem* item, const QtRoonBrowseApi::LoadResult& result);
+    void            updateAlbum             (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result);
     void            updateZone              (YioContext& ctx, const QtRoonTransportApi::Zone& zone, bool seekChanged);
     void            updateError             (YioContext& ctx, const QString& error);
     QStringList     getForcedActions        (EAction forcedActions);
