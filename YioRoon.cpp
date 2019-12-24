@@ -436,7 +436,11 @@ void YioRoon::onZoneSeekChanged(const QtRoonTransportApi::Zone& zone)
 }
 void YioRoon::onError (const QString& error)
 {
-    _notifications->add(true, "Cannot connect ROON : " + error, tr("Reconnect"), "roon");
+    QObject* param = this;
+    _notifications->add(true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"), [](QObject* param){
+        Integration* i = qobject_cast<Integration *>(param);
+        i->connect();
+    }, param);
 }
 
 void YioRoon::OnPaired(const RoonCore& core)
