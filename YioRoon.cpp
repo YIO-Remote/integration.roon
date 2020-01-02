@@ -1,3 +1,25 @@
+/******************************************************************************
+ *
+ * Copyright (C) 2019 Christian Riedl <ric@rts.co.at>
+ *
+ * This file is part of the YIO-Remote software project.
+ *
+ * YIO-Remote software is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * YIO-Remote software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with YIO-Remote software. If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ *****************************************************************************/
+
 #include "YioRoon.h"
 #include "../remote-software/sources/configinterface.h"
 #include "../remote-software/sources/entities/mediaplayerinterface.h"
@@ -5,13 +27,13 @@
 IntegrationInterface::~IntegrationInterface()
 {}
 
-Roon::Roon(QObject* parent) :
+RoonPlugin::RoonPlugin(QObject* parent) :
     _log("roon"),
     _discovery(_log, parent)
 {
 }
 
-void Roon::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
+void RoonPlugin::create(const QVariantMap &config, QObject *entities, QObject *notifications, QObject *api, QObject *configObj)
 {
     QMap<QObject *, QVariant>   returnData;
     QVariantList                data;
@@ -34,11 +56,11 @@ void Roon::create(const QVariantMap &config, QObject *entities, QObject *notific
     if (data.length() > 0)
         emit createDone(returnData);
     else {
-        connect (&_discovery, &QtRoonDiscovery::roonDiscovered, this, &Roon::onRoonDiscovered);
+        connect (&_discovery, &QtRoonDiscovery::roonDiscovered, this, &RoonPlugin::onRoonDiscovered);
         _discovery.startDiscovery(1000, true);
     }
 }
-void Roon::onRoonDiscovered (QMap<QString, QVariantMap> soodmaps)
+void RoonPlugin::onRoonDiscovered (QMap<QString, QVariantMap> soodmaps)
 {
     QVariantMap roonsmap;
 
@@ -60,11 +82,11 @@ QLoggingCategory YioRoon::_log("roon");
 YioRoon* YioRoon::_instance = nullptr;
 
 YioRoon::YioRoon(QObject* parent) :
-    _roonApi("ws://192.168.1.100:9100/api", "C:\\Temp\\", _reg, _log),
+    _roonApi("ws://192.168.1.100:9100/api", "", _reg, _log),
     _browseApi(_roonApi, this),
     _transportApi(_roonApi, transportCallback),
     _subscriptionKey(-1),
-    _numItems(50),
+    _numItems(500),
     _items(nullptr),
     _cmdsForItem(true)
 {
@@ -148,7 +170,7 @@ void YioRoon::connect()
             EntityInterface* entity = list[i];
             _contexts.append(YioContext(i, entity->entity_id(), entity->friendly_name()));
             MediaPlayerInterface* mpIf = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
-            mpIf->setModel(&_model);
+            mpIf->setBrowseModel(&_model);
         }
         _items = new QList<QtRoonBrowseApi::BrowseItem> [static_cast<size_t>(list.length())];
     }
@@ -170,7 +192,7 @@ void YioRoon::leaveStandby()
 {
     _subscriptionKey = _transportApi.subscribeZones();
 }
-void YioRoon::sendCommand(const QString& type, const QString& id, const QString& cmd, const QVariant& param)
+void YioRoon::sendCommand(const QString& type, const QString& id, int cmd, const QVariant& param)
 {
 /*
     "SOURCE", "APP_NAME",
@@ -193,83 +215,109 @@ void YioRoon::sendCommand(const QString& type, const QString& id, const QString&
     YioContext& ctx = _contexts[idx];
 
     const QtRoonTransportApi::Zone& zone = _transportApi.getZone(ctx.zoneId);
+    if (zone.outputs.count()== 0) {
+        qCWarning(_log) << "No output for zone" << ctx.zoneId;
+        return;
+    }
     const QtRoonTransportApi::Output& output = zone.outputs[0];
-    if (cmd == "VOLUME_SET") {
-        _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::absolute, param.toInt());
-    }
-    else if (cmd == "VOLUME_UP") {
-        _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, 1);
-    }
-    else if (cmd == "VOLUME_DOWN") {
-        _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, -1);
-    }
-    else if (cmd == "MUTE_SET") {
-        _transportApi.mute(output.output_id, param.toBool() ? QtRoonTransportApi::EMute::mute : QtRoonTransportApi::EMute::unmute);
-    }
-    else if (cmd == "PLAY") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::play);
-    }
-    else if (cmd == "PAUSE") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::pause);
-    }
-    else if (cmd == "STOP") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::stop);
-    }
-    else if (cmd == "PREVIOUS") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::previous);
-    }
-    else if (cmd == "NEXT") {
-        _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::next);
-    }
-    else if (cmd == "BROWSE") {
-        QString cmd = param.toString();
-        if (cmd == "TOP")
-            browse(ctx, true);
-        else if (cmd == "BACK")
-            browseBack(ctx);
-        else {
-            const QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
-            for (int i = 0; i < items.length(); i++) {
-                if (items[i].item_key == cmd) {
-                    browse(ctx, items, i, false);
-                    return;
-                }
-            }
-            const Action* action = getActionYio(cmd);
-            if (action == nullptr) {
-                qCWarning(_log) << "Can't find Browse command " << cmd;
-                return;
-            }
-            for (int i = 0; i < items.length(); i++) {
-                if (items[i].hint == "action_list") {
-                    const Action* actionList = getActionRoon(items[i].title);
-                    if (actionList != nullptr) {
-                       ctx.forcedAction = cmd;
-                        browseAction (ctx, items[i].item_key);
+    switch (static_cast<MediaPlayerDef::Commands>(cmd)) {
+        case MediaPlayerDef::C_VOLUME_SET:
+            _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::absolute, param.toInt());
+            break;
+        case MediaPlayerDef::C_VOLUME_UP:
+            _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, 1);
+            break;
+        case MediaPlayerDef::C_VOLUME_DOWN:
+            _transportApi.changeVolume(output.output_id, QtRoonTransportApi::EValueMode::relative_step, -1);
+            break;
+        case MediaPlayerDef::C_MUTE:
+            _transportApi.mute(output.output_id, param.toBool() ? QtRoonTransportApi::EMute::mute : QtRoonTransportApi::EMute::unmute);
+            break;
+        case MediaPlayerDef::C_PLAY:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::play);
+            break;
+        case MediaPlayerDef::C_PAUSE:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::pause);
+            break;
+        case MediaPlayerDef::C_STOP:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::stop);
+            break;
+        case MediaPlayerDef::C_PREVIOUS:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::previous);
+            break;
+        case MediaPlayerDef::C_NEXT:
+            _transportApi.control(ctx.zoneId, QtRoonTransportApi::EControl::next);
+            break;
+        case MediaPlayerDef::C_BROWSE: {
+                QString cmd = param.toString();
+                if (cmd == "TOP")
+                    browse(ctx, true);
+                else if (cmd == "BACK")
+                    browseBack(ctx);
+                else {
+                    const QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
+                    for (int i = 0; i < items.length(); i++) {
+                        if (items[i].item_key == cmd) {
+                            browse(ctx, items, i, false);
+                            return;
+                        }
+                    }
+                    const Action* action = getActionYio(cmd);
+                    if (action == nullptr) {
+                        qCWarning(_log) << "Can't find Browse command " << cmd;
                         return;
                     }
-                }
-                if (items[i].hint == "action") {
-                    if (items[i].title == action->roonName) {
-                        browse(ctx, items, i, true);
-                        return;
+                    for (int i = 0; i < items.length(); i++) {
+                        if (items[i].hint == "action_list") {
+                            const Action* actionList = getActionRoon(items[i].title);
+                            if (actionList != nullptr) {
+                               ctx.forcedAction = cmd;
+                                browseAction (ctx, items[i].item_key);
+                                return;
+                            }
+                        }
+                        if (items[i].hint == "action") {
+                            if (items[i].title == action->roonName) {
+                                browse(ctx, items, i, true);
+                                return;
+                            }
+                        }
                     }
+                    qCWarning(_log) << "Can't find action list" << action->roonName;
                 }
             }
-            qCWarning(_log) << "Can't find action list" << action->roonName;
-        }
-    }
-    else if (cmd.startsWith("play:")){
-        QString pcmd = cmd.mid (5);
-        const Action* action = getActionYio(pcmd);
-        if (action != nullptr) {
-            ctx.forcedAction = pcmd;
-            playMedia(ctx, param.toString(), true);
-        }
-    }
-    else if (cmd.startsWith("search:")){
-        QString scmd = cmd.mid (7);
-        search (ctx, scmd, param.toString());
+            break;
+        case MediaPlayerDef::C_PLAY_ITEM: {
+                QVariantMap map = param.toMap();
+                QString pcmd = map["command"].toString();
+                pcmd = "Play Now";      // @@@ temporary
+                QString type = map["type"].toString();
+                QString key = map["id"].toString();
+                const Action* action = getActionYio(pcmd);
+                if (action != nullptr) {
+                    ctx.forcedAction = pcmd;
+                    playMedia(ctx, key, true);
+                }
+            }
+            break;
+        case MediaPlayerDef::C_SEARCH_ITEM: {
+                QVariantMap map = param.toMap();
+                QString scmd = map["text"].toString();
+                QString key = map["key"].toString();
+                search (ctx, scmd, key);
+            }
+            break;
+        case MediaPlayerDef::C_SEARCH:
+                search (ctx, param.toString());
+            break;
+        case MediaPlayerDef::C_GETALBUM:
+                getAlbum(ctx, param.toString());
+            break;
+        default: {
+            EntityInterface* entity = m_entities->getEntityInterface(ctx.entityId);
+            qCWarning(_log) << "Illegal command" << entity->getCommandName(cmd);
+            }
+            break;
     }
 }
 void YioRoon::browse(YioContext &ctx, bool fromTop)
@@ -304,6 +352,26 @@ void YioRoon::search (YioContext &ctx, const QString& searchText, const QString&
     opt.input = searchText;
     ctx.browseMode = BROWSE;
     _browseApi.browse (opt, ctx);
+}
+void YioRoon::search (YioContext &ctx, const QString& searchText)
+{
+    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, true, false, 0);
+    ctx.browseMode = GOTOPATH;
+    ctx.searchText = searchText;
+    ctx.searchModel = nullptr;      // @@@ delete ?
+    ctx.goToPath = QStringList ({"Library", "Search"});
+    ctx.albumMap.clear();
+    _browseApi.browse (opt, ctx);
+}
+void YioRoon::getAlbum (YioContext &ctx, const QString& itemKey)
+{
+    QString albumTitle = ctx.albumMap.value(itemKey);
+    if (!albumTitle.isEmpty()) {
+        QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, true, false, 0);
+        ctx.goToPath = QStringList ({"Library", "Albums", albumTitle});
+        ctx.browseMode = GETALBUM;
+        _browseApi.browse (opt, ctx);
+    }
 }
 void YioRoon::playMedia(YioContext &ctx, const QString& itemKey, bool setItemIndex)
 {
@@ -368,7 +436,11 @@ void YioRoon::onZoneSeekChanged(const QtRoonTransportApi::Zone& zone)
 }
 void YioRoon::onError (const QString& error)
 {
-    _notifications->add(true, "Cannot connect ROON : " + error, tr("Reconnect"), "roon");
+    QObject* param = this;
+    _notifications->add(true, tr("Cannot connect to ").append(friendlyName()).append("."), tr("Reconnect"), [](QObject* param){
+        Integration* i = qobject_cast<Integration *>(param);
+        i->connect();
+    }, param);
 }
 
 void YioRoon::OnPaired(const RoonCore& core)
@@ -412,6 +484,8 @@ void YioRoon::OnBrowse (const QString& err, QtRoonBrowseApi::Context& context, c
         switch (ctx.browseMode) {
             case BROWSE:
             case ACTION:
+            case GOTOPATH:
+            case GETALBUM:
                 opt.offset = listoffset;
                 opt.count = _numItems;
                 opt.set_display_offset = listoffset;
@@ -435,7 +509,7 @@ void YioRoon::OnLoad   (const QString& err, QtRoonBrowseApi::Context& context, c
 
     switch (ctx.browseMode) {
         case BROWSE:
-            updateItems(static_cast<YioContext&>(context), result);
+            updateItems(ctx, result);
             break;
         case PLAY:
             if (result.items.length() > 0) {
@@ -492,6 +566,88 @@ void YioRoon::OnLoad   (const QString& err, QtRoonBrowseApi::Context& context, c
                 }
             }
             break;
+        case GOTOPATH:
+            if (ctx.goToPath.length() == 0) {
+                // return of search operation
+                if (ctx.searchModel == nullptr) {
+                    ctx.searchModel = new SearchModel();
+                    for (int j = 0; j < result.items.length(); j++) {
+                        const QtRoonBrowseApi::BrowseItem& item = result.items.at(j);
+                        if (item.title == "Artists") {
+                            ctx.searchKeys.append(item.item_key);
+                            ctx.searchModel->append(new SearchModelItem ("artists", new SearchModelList()));
+                        }
+                        if (item.title == "Albums") {
+                            ctx.searchKeys.append(item.item_key);
+                            ctx.searchModel->append(new SearchModelItem ("albums", new SearchModelList()));
+                        }
+                        if (item.title == "Tracks") {
+                            ctx.searchKeys.append(item.item_key);
+                            ctx.searchModel->append(new SearchModelItem ("tracks", new SearchModelList()));
+                        }
+                    }
+                }
+                else {
+                    // return of type search
+                    if (updateSearch(ctx, result)) {
+                        // End
+                        ctx.searchModel = nullptr;
+                        ctx.searchText = "";
+                    }
+                }
+                if (ctx.searchKeys.length() > 0) {
+                    QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, ctx.searchKeys[0]);
+                    ctx.searchKeys.removeAt(0);
+                    _browseApi.browse (opt, ctx);
+                }
+                return;
+            }
+            for (int j = 0; j < result.items.length(); j++) {
+                const QtRoonBrowseApi::BrowseItem& item = result.items[j];
+                if (item.title == ctx.goToPath[0]) {
+                    // thats it
+                    ctx.goToPath.removeAt(0);
+                    if (ctx.goToPath.length() > 0) {
+                        // continue search
+                        QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, item.item_key);
+                       _browseApi.browse (opt, ctx);
+                    }
+                    else {
+                        // found
+                        QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, item.item_key, 0);
+                        if (!ctx.searchText.isEmpty())
+                            opt.input = ctx.searchText;
+                        _browseApi.browse (opt, ctx);
+                    }
+                    break;
+                }
+            }
+            break;
+        case GETALBUM:
+            if (ctx.goToPath.length() == 0) {
+                updateAlbum(ctx, result);
+            }
+            else {
+                for (int j = 0; j < result.items.length(); j++) {
+                    const QtRoonBrowseApi::BrowseItem& item = result.items[j];
+                    if (item.title == ctx.goToPath[0]) {
+                        // thats it
+                        ctx.goToPath.removeAt(0);
+                        if (ctx.goToPath.length() > 0) {
+                            // continue search
+                            QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, item.item_key);
+                           _browseApi.browse (opt, ctx);
+                        }
+                        else {
+                            // found
+                            QtRoonBrowseApi::BrowseOption opt (ctx.zoneId, item.item_key, 0);
+                            _browseApi.browse (opt, ctx);
+                        }
+                        break;
+                    }
+                }
+            }
+        break;
     }
 }
 
@@ -532,14 +688,25 @@ void YioRoon::updateZone (YioContext& ctx, const QtRoonTransportApi::Zone& zone,
                 entity->updateAttrByIndex(MediaPlayerDef::MEDIAIMAGE, "");
             entity->updateAttrByIndex(MediaPlayerDef::MEDIAARTIST, np->two_line->line2);
             entity->updateAttrByIndex(MediaPlayerDef::MEDIATITLE, np->two_line->line1);
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIADURATION, np->length);
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIAPROGRESS, np->seek_position);
         }
         else {
             entity->updateAttrByIndex(MediaPlayerDef::MEDIAIMAGE, "");
             entity->updateAttrByIndex(MediaPlayerDef::MEDIAARTIST, "");
             entity->updateAttrByIndex(MediaPlayerDef::MEDIATITLE, "");
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIADURATION, 0);
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIAPROGRESS, zone.seek_position);
         }
         entity->updateAttrByIndex(MediaPlayerDef::SOURCE, "");
         entity->updateAttrByIndex(MediaPlayerDef::MEDIATYPE, "");
+    }
+    else {
+        entity->updateAttrByIndex(MediaPlayerDef::MEDIAPROGRESS, zone.seek_position);
+        if (zone.now_playing != nullptr) {
+            const QtRoonTransportApi::NowPlaying* np = zone.now_playing;
+            entity->updateAttrByIndex(MediaPlayerDef::MEDIADURATION, np->length);
+        }
     }
 }
 void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result) {
@@ -547,8 +714,9 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
     int             level = 0;
 
     int idx = ctx.index;
+#if !NEW_VERSION
     _model.clear();
-
+#endif
     QList<QtRoonBrowseApi::BrowseItem>& items = _items[idx];
     items.clear();
     QString     browseType;
@@ -606,17 +774,121 @@ void YioRoon::updateItems (YioContext& ctx, const QtRoonBrowseApi::LoadResult& r
             url = "qrc:/images/mini-music-player/no_image.png";
         else
             url = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
+#if NEW_VERSION
+        _model.addItem(item.item_key, item.title, item.subtitle, browseType, url, playCommands);
+#else
         ModelItem  modelItem (item.item_key, item.title, item.subtitle, url, item.input_prompt == nullptr ? "" : item.input_prompt->prompt);
         _model.addItem(modelItem);
+#endif
     }
     EntityInterface* entity = m_entities->getEntityInterface(ctx.entityId);
+#if !NEW_VERSION
     _model.setHeader(browseType, result.list != nullptr ? result.list->title : "", result.list != nullptr ? result.list->level : -1);
     _model.setPlayCommands(playCommands);
-    MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
     _model.begin();
     _model.end();
-    mediaPlayer->setModel(&_model);
+#endif
+    MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
+    mediaPlayer->setBrowseModel(&_model);
 }
+bool YioRoon::updateSearch (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result)
+{
+    QList<SearchModelItem*> items = ctx.searchModel->items();
+
+    int count = 0;
+    for (int i = 0; i < items.count(); i++) {
+        const SearchModelItem* item = items.at(i);
+        if (updateSearchList (ctx, item, result))
+            count++;
+    }
+    if (count == items.count()) {
+        EntityInterface* entity = m_entities->getEntityInterface(ctx.entityId);
+        MediaPlayerInterface* mediaPlayer = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
+        mediaPlayer->setSearchModel(ctx.searchModel);
+        return true;
+    }
+    return false;
+}
+
+bool YioRoon::updateSearchList (YioContext& ctx, const SearchModelItem* item, const QtRoonBrowseApi::LoadResult& result)
+{
+    SearchModelList* list = qobject_cast<SearchModelList*>(item->item_model());
+    if (list->rowCount() > 0)
+        return true;             // already filled
+    if (result.list != nullptr && result.list->title.toLower() == item->item_type()) {
+        // Fill list
+        QString url;
+        if (item->item_type() == "artists") {
+            QStringList commands = {"ARTISTRADIO"};
+            for (int i = 0; i < result.items.length(); i++) {
+                const QtRoonBrowseApi::BrowseItem& item = result.items.at(i);
+                if (item.image_key.isEmpty())
+                    url = "qrc:/images/mini-music-player/no_image.png";
+                else
+                    url = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
+                SearchModelListItem it = SearchModelListItem(item.item_key, "artist", item.title, item.subtitle, url, commands);
+                list->append(it);
+            }
+            return true;
+        }
+        if (item->item_type() == "albums") {
+            QStringList commands = {"PLAY"};
+            for (int i = 0; i < result.items.length(); i++) {
+                const QtRoonBrowseApi::BrowseItem& item = result.items.at(i);
+                ctx.albumMap.insert(item.item_key, item.title);
+                if (item.image_key.isEmpty())
+                    url = "qrc:/images/mini-music-player/no_image.png";
+                else
+                    url = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
+                SearchModelListItem it = SearchModelListItem(item.item_key, "album", item.title, item.subtitle, url, commands);
+                list->append(it);
+            }
+            return true;
+        }
+        if (item->item_type() == "tracks") {
+            QStringList commands = {"PLAY"};
+            for (int i = 0; i < result.items.length(); i++) {
+                const QtRoonBrowseApi::BrowseItem& item = result.items.at(i);
+                if (item.image_key.isEmpty())
+                    url = "qrc:/images/mini-music-player/no_image.png";
+                else
+                    url = _imageUrl + item.image_key + "?scale=fit&width=64&height=64";
+                SearchModelListItem it = SearchModelListItem(item.item_key, "track", item.title, item.subtitle, url, commands);
+                list->append(it);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+void YioRoon::updateAlbum (YioContext& ctx, const QtRoonBrowseApi::LoadResult& result)
+{
+     if (result.list == nullptr)
+        return;
+     QStringList commands = {"PLAY", "SONGRADIO"};
+
+     QString url;
+     if (result.list->image_key.isEmpty())
+         url = "qrc:/images/mini-music-player/no_image.png";
+     else
+         url = _imageUrl + result.list->image_key + "?scale=fit&width=64&height=64";
+     BrowseModel* album = new BrowseModel(nullptr, "", result.list->title, result.list->subtitle, "album", url, commands);
+
+     for (int i = 0; i < result.items.length(); i++) {
+         const QtRoonBrowseApi::BrowseItem& item = result.items.at(i);
+         if (item.title == "Play Album")
+             continue;
+         album->addItem(item.item_key, item.subtitle, item.title, "track", "", commands);
+     }
+     // update the entity
+     EntityInterface* entity = m_entities->getEntityInterface(ctx.entityId);
+     if (entity != nullptr) {
+         MediaPlayerInterface* me = static_cast<MediaPlayerInterface*>(entity->getSpecificInterface());
+         me->setBrowseModel(album);
+     }
+}
+
 void YioRoon::updateError (YioContext& ctx, const QString& error)
 {
     Q_UNUSED(ctx)
