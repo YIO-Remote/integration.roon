@@ -3,33 +3,44 @@ CONFIG      += plugin
 QT          += websockets core quick
 DEFINES     += DEBUG
 
-REMOTE_SRC = $$(YIO_SRC)
-isEmpty(REMOTE_SRC) {
-    REMOTE_SRC = $$clean_path($$PWD/../remote-software)
-    warning("Environment variables YIO_SR not defined! Using '$$REMOTE_SRC' for remote-software project.")
+INTG_LIB_PATH = $$(YIO_SRC)
+isEmpty(INTG_LIB_PATH) {
+    INTG_LIB_PATH = $$clean_path($$PWD/../integrations.library)
+    message("Environment variables YIO_SRC not defined! Using '$$INTG_LIB_PATH' for integrations.library project.")
 } else {
-    REMOTE_SRC = $$(YIO_SRC)/remote-software
-    message("YIO_SRC is set: using '$$REMOTE_SRC' for remote-software project.")
+    INTG_LIB_PATH = $$(YIO_SRC)/integrations.library
+    message("YIO_SRC is set: using '$$INTG_LIB_PATH' for integrations.library project.")
 }
 
-! include($$REMOTE_SRC/qmake-target-platform.pri) {
-    error( "Couldn't find the qmake-target-platform.pri file!" )
-}
-! include($$REMOTE_SRC/qmake-destination-path.pri) {
-    error( "Couldn't find the qmake-destination-path.pri file!" )
+! include($$INTG_LIB_PATH/qmake-destination-path.pri) {
+    error( "Cannot find the qmake-destination-path.pri file!" )
 }
 
-HEADERS         = YioRoon.h QtRoonApi.h QtRoonBrowseApi.h QtRoonTransportApi.h QtRoonStatusApi.h QtRoonDiscovery.h  \
-                  $$REMOTE_SRC/sources/integrations/integration.h \
-                  $$REMOTE_SRC/sources/integrations/plugininterface.h \
-                  $$REMOTE_SRC/components/media_player/sources/searchmodel_mediaplayer.h \
-                  $$REMOTE_SRC/components/media_player/sources/albummodel_mediaplayer.h
+! include($$INTG_LIB_PATH/yio-plugin-lib.pri) {
+    error( "Cannot find the yio-plugin-lib.pri file!" )
+}
 
-SOURCES         = YioRoon.cpp QtRoonApi.cpp QtRoonBrowseApi.cpp QtRoonTransportApi.cpp QtRoonStatusApi.cpp QtRoonDiscovery.cpp  \
-                  $$REMOTE_SRC/components/media_player/sources/searchmodel_mediaplayer.cpp \
-                  $$REMOTE_SRC/components/media_player/sources/albummodel_mediaplayer.cpp
+! include($$INTG_LIB_PATH/yio-model-mediaplayer.pri) {
+    error( "Cannot find the yio-model-mediaplayer.pri file!" )
+}
 
-TARGET          = roon
+HEADERS  += \
+    src/YioRoon.h \
+    src/QtRoonApi.h \
+    src/QtRoonBrowseApi.h \
+    src/QtRoonTransportApi.h \
+    src/QtRoonStatusApi.h \
+    src/QtRoonDiscovery.h
+
+SOURCES  += \
+    src/YioRoon.cpp \
+    src/QtRoonApi.cpp \
+    src/QtRoonBrowseApi.cpp \
+    src/QtRoonTransportApi.cpp \
+    src/QtRoonStatusApi.cpp \
+    src/QtRoonDiscovery.cpp
+
+TARGET    = roon
 
 # Configure destination path. DESTDIR is set in qmake-destination-path.pri
 DESTDIR = $$DESTDIR/plugins
@@ -46,4 +57,3 @@ unix {
     INSTALLS += target
 }
 
-DISTFILES +=
