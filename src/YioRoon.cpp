@@ -22,8 +22,8 @@
 
 #include "YioRoon.h"
 
-#include "../remote-software/sources/configinterface.h"
-#include "../remote-software/sources/entities/mediaplayerinterface.h"
+#include "yio-interface/configinterface.h"
+#include "yio-interface/entities/mediaplayerinterface.h"
 
 IntegrationInterface::~IntegrationInterface() {}
 

@@ -23,12 +23,12 @@
 #define NEW_VERSION 1
 #include <QtCore/QObject>
 
-#include "../remote-software/components/media_player/sources/albummodel_mediaplayer.h"
-#include "../remote-software/components/media_player/sources/searchmodel_mediaplayer.h"
-#include "../remote-software/sources/entities/entitiesinterface.h"
-#include "../remote-software/sources/integrations/integration.h"
-#include "../remote-software/sources/integrations/plugininterface.h"
-#include "../remote-software/sources/notificationsinterface.h"
+#include "yio-model/mediaplayer/albummodel_mediaplayer.h"
+#include "yio-model/mediaplayer/searchmodel_mediaplayer.h"
+#include "yio-interface/entities/entityinterface.h"
+#include "yio-plugin/integration.h"
+#include "yio-interface/plugininterface.h"
+#include "yio-interface/notificationsinterface.h"
 #include "QtRoonApi.h"
 #include "QtRoonBrowseApi.h"
 #include "QtRoonDiscovery.h"
