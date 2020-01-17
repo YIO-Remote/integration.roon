@@ -29,8 +29,8 @@ IntegrationInterface::~IntegrationInterface() {}
 
 RoonPlugin::RoonPlugin(QObject* parent) : _log("roon"), _discovery(_log, parent) {}
 
-void RoonPlugin::create(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api,
-                        QObject* configObj) {
+void RoonPlugin::create(const QVariantMap& config, EntitiesInterface *entities, NotificationsInterface *notifications, YioAPIInterface *api,
+                        ConfigInterface *configObj) {
     QMap<QObject*, QVariant> returnData;
     QVariantList             data;
 
@@ -133,8 +133,8 @@ YioRoon::~YioRoon() {
     }
 }
 
-void YioRoon::setup(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api,
-                    QObject* configObj) {
+void YioRoon::setup(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
+                    YioAPIInterface* api, ConfigInterface* configObj) {
     Q_UNUSED(api)
     Integration::setup(config, entities);
 
@@ -146,10 +146,9 @@ void YioRoon::setup(const QVariantMap& config, QObject* entities, QObject* notif
             _imageUrl = "http://" + ip + "/api/image/";
         }
     }
-    ConfigInterface* configInterface = qobject_cast<ConfigInterface*>(configObj);
-    QString          configPath = configInterface->getContextProperty("configPath").toString() + "/roon";
+    QString          configPath = configObj->getContextProperty("configPath").toString() + "/roon";
     if (!QDir(configPath).exists()) QDir().mkdir(configPath);
-    _notifications = qobject_cast<NotificationsInterface*>(notifications);
+    _notifications = notifications;
     _roonApi.setup(_url, configPath);
 }
 

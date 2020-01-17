@@ -23,16 +23,16 @@
 #define NEW_VERSION 1
 #include <QtCore/QObject>
 
-#include "yio-model/mediaplayer/albummodel_mediaplayer.h"
-#include "yio-model/mediaplayer/searchmodel_mediaplayer.h"
-#include "yio-interface/entities/entityinterface.h"
-#include "yio-plugin/integration.h"
-#include "yio-interface/plugininterface.h"
-#include "yio-interface/notificationsinterface.h"
 #include "QtRoonApi.h"
 #include "QtRoonBrowseApi.h"
 #include "QtRoonDiscovery.h"
 #include "QtRoonTransportApi.h"
+#include "yio-interface/entities/entityinterface.h"
+#include "yio-interface/notificationsinterface.h"
+#include "yio-interface/plugininterface.h"
+#include "yio-model/mediaplayer/albummodel_mediaplayer.h"
+#include "yio-model/mediaplayer/searchmodel_mediaplayer.h"
+#include "yio-plugin/integration.h"
 
 class RoonPlugin : public PluginInterface {
     Q_OBJECT
@@ -44,8 +44,8 @@ class RoonPlugin : public PluginInterface {
     explicit RoonPlugin(QObject* parent = nullptr);
     virtual ~RoonPlugin() override {}
 
-    void create(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api,
-                QObject* configObj) override;
+    void create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
+                YioAPIInterface* api, ConfigInterface* configObj) override;
     void setLogEnabled(QtMsgType msgType, bool enable) override { _log.setEnabled(msgType, enable); }
 
  public slots:
@@ -62,8 +62,8 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     explicit YioRoon(QObject* parent = nullptr);
     virtual ~YioRoon() override;
 
-    Q_INVOKABLE void setup(const QVariantMap& config, QObject* entities, QObject* notifications, QObject* api,
-                           QObject* configObj);
+    Q_INVOKABLE void setup(const QVariantMap& config, EntitiesInterface* entities,
+                           NotificationsInterface* notifications, YioAPIInterface* api, ConfigInterface* configObj);
     void             connect() override;
     void             disconnect() override;
     void             enterStandby() override;
@@ -89,6 +89,7 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
         ACT_REJECT = 0x0100,
         ACT_ACTIONLIST = 0x0200
     };
+
     class Action {
      public:
         Action(const QString& roonName, const QString& yioName, const QString& type, const QString& parentTitle,
