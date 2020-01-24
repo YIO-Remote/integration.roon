@@ -20,59 +20,63 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  *****************************************************************************/
 #pragma once
+
 #define NEW_VERSION 1
+
 #include <QtCore/QObject>
 
 #include "QtRoonApi.h"
 #include "QtRoonBrowseApi.h"
 #include "QtRoonDiscovery.h"
 #include "QtRoonTransportApi.h"
+
 #include "yio-interface/entities/entityinterface.h"
 #include "yio-interface/notificationsinterface.h"
 #include "yio-interface/plugininterface.h"
 #include "yio-model/mediaplayer/albummodel_mediaplayer.h"
 #include "yio-model/mediaplayer/searchmodel_mediaplayer.h"
 #include "yio-plugin/integration.h"
+#include "yio-plugin/plugin.h"
 
-class RoonPlugin : public PluginInterface {
+const bool USE_WORKER_THREAD = false;
+
+class RoonPlugin : public Plugin {
     Q_OBJECT
     // Q_DISABLE_COPY(Roon)
-    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "roon.json")
     Q_INTERFACES(PluginInterface)
+    Q_PLUGIN_METADATA(IID "YIO.PluginInterface" FILE "roon.json")
 
  public:
-    explicit RoonPlugin(QObject* parent = nullptr);
-    virtual ~RoonPlugin() override {}
+    RoonPlugin();
 
+    // Plugin interface
+ public:
     void create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
                 YioAPIInterface* api, ConfigInterface* configObj) override;
-    void setLogEnabled(QtMsgType msgType, bool enable) override { _log.setEnabled(msgType, enable); }
 
- public slots:
+ public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
     void onRoonDiscovered(QMap<QString, QVariantMap>);
 
  private:
-    QLoggingCategory _log;
-    QtRoonDiscovery  _discovery;
+    QtRoonDiscovery _discovery;
 };
 
 class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     Q_OBJECT
+
  public:
-    explicit YioRoon(QObject* parent = nullptr);
-    virtual ~YioRoon() override;
+    explicit YioRoon(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
+                     YioAPIInterface* api, ConfigInterface* configObj, Plugin* plugin);
+    ~YioRoon() override;
 
-    Q_INVOKABLE void setup(const QVariantMap& config, EntitiesInterface* entities,
-                           NotificationsInterface* notifications, YioAPIInterface* api, ConfigInterface* configObj);
-    void             connect() override;
-    void             disconnect() override;
-    void             enterStandby() override;
-    void             leaveStandby() override;
-    void sendCommand(const QString& type, const QString& entity_id, int command, const QVariant& param) override;
+    Q_INVOKABLE void connect() override;
+    Q_INVOKABLE void disconnect() override;
+    Q_INVOKABLE void enterStandby() override;
+    Q_INVOKABLE void leaveStandby() override;
+    Q_INVOKABLE void sendCommand(const QString& type, const QString& entity_id, int command,
+                                 const QVariant& param) override;
 
-    static QLoggingCategory& Log() { return _log; }
-
- public slots:
+ public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
     void onZonesChanged();
     void onZoneSeekChanged(const QtRoonTransportApi::Zone& zone);
     void onError(const QString& error);
@@ -148,7 +152,6 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     bool                                _playFromThere;
     QString                             _url;
     QString                             _imageUrl;
-    NotificationsInterface*             _notifications;
     QList<Action>                       _actions;
     QList<QtRoonBrowseApi::BrowseItem>* _items;
     QList<YioContext>                   _contexts;
@@ -156,7 +159,6 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     bool                                _cmdsForItem;
     BrowseModel                         _model;
     static YioRoon*                     _instance;
-    static QLoggingCategory             _log;
 
     static void transportCallback(int requestId, const QString& msg);
     void        browse(YioContext& ctx, bool fromTop);
@@ -169,12 +171,12 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     void        search(YioContext& ctx, const QString& searchText);
     void        getAlbum(YioContext& ctx, const QString& itemKey);
 
-    virtual void OnPaired(const RoonCore& core) override;
-    virtual void OnUnpaired(const RoonCore& core) override;
-    virtual void OnBrowse(const QString& err, QtRoonBrowseApi::Context& context,
-                          const QtRoonBrowseApi::BrowseResult& content) override;
-    virtual void OnLoad(const QString& err, QtRoonBrowseApi::Context& context,
-                        const QtRoonBrowseApi::LoadResult& content) override;
+    void OnPaired(const RoonCore& core) override;
+    void OnUnpaired(const RoonCore& core) override;
+    void OnBrowse(const QString& err, QtRoonBrowseApi::Context& context,
+                  const QtRoonBrowseApi::BrowseResult& content) override;
+    void OnLoad(const QString& err, QtRoonBrowseApi::Context& context,
+                const QtRoonBrowseApi::LoadResult& content) override;
 
     void updateItems(YioContext& ctx, const QtRoonBrowseApi::LoadResult& result);
     bool updateSearch(YioContext& ctx, const QtRoonBrowseApi::LoadResult& result);
