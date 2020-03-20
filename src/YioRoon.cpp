@@ -25,10 +25,12 @@
 #include "yio-interface/configinterface.h"
 #include "yio-interface/entities/mediaplayerinterface.h"
 
-RoonPlugin::RoonPlugin() : Plugin("roon", USE_WORKER_THREAD), _discovery(m_logCategory) {}
+RoonPlugin::RoonPlugin() : Plugin("roon", NO_WORKER_THREAD), _discovery(m_logCategory) {}
 
 void RoonPlugin::create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
                         YioAPIInterface* api, ConfigInterface* configObj) {
+    qCInfo(m_logCategory) << "Creating Roon integration plugin" << PLUGIN_VERSION;
+
     QMap<QObject*, QVariant> returnData;
     QVariantList             data;
 

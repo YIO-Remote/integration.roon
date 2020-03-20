@@ -38,7 +38,7 @@
 #include "yio-plugin/integration.h"
 #include "yio-plugin/plugin.h"
 
-const bool USE_WORKER_THREAD = false;
+const bool NO_WORKER_THREAD = false;
 
 class RoonPlugin : public Plugin {
     Q_OBJECT

@@ -1,3 +1,7 @@
+# Plugin VERSION
+ROON_VERSION = $$system(git describe --match "v[0-9]*" --tags HEAD --always)
+DEFINES += PLUGIN_VERSION=\\\"$$ROON_VERSION\\\"
+
 TEMPLATE    = lib
 CONFIG      += plugin
 QT          += websockets core quick
@@ -23,6 +27,10 @@ isEmpty(INTG_LIB_PATH) {
 ! include($$INTG_LIB_PATH/yio-model-mediaplayer.pri) {
     error( "Cannot find the yio-model-mediaplayer.pri file!" )
 }
+
+QMAKE_SUBSTITUTES += roon.json.in
+# output path must be included for the output file from QMAKE_SUBSTITUTES
+INCLUDEPATH += $$OUT_PWD
 
 HEADERS  += \
     src/YioRoon.h \
