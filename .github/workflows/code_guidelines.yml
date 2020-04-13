@@ -1,7 +1,16 @@
 # GitHub Action that verifies C++ source compliance with cpplint
 
 name: Code Guidelines
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - src/**.cpp
+      - src/**.h
+  pull_request:
+    paths:
+      - src/**.cpp
+      - src/**.h
+
 jobs:
   cpplint:
     runs-on: ubuntu-latest
