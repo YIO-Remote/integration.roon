@@ -22,6 +22,8 @@
 
 #include "YioRoon.h"
 
+#include <QStandardPaths>
+
 #include "yio-interface/configinterface.h"
 #include "yio-interface/entities/mediaplayerinterface.h"
 
@@ -137,9 +139,12 @@ YioRoon::YioRoon(const QVariantMap& config, EntitiesInterface* entities, Notific
             _imageUrl = "http://" + ip + "/api/image/";
         }
     }
-    QString configPath = configObj->getContextProperty("configPath").toString() + "/roon";
+    QString configPath = configObj->getSettings().value("configPath").toString() + "/roon";
     if (!QDir(configPath).exists()) {
-        QDir().mkdir(configPath);
+        if (!QDir().mkdir(configPath)) {
+            configPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+            qCCritical(m_logCategory) << "Invalid configuration path, using system temp directory to persist state information:" << configPath;
+        }
     }
     _roonApi.setup(_url, configPath);
 }
