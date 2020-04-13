@@ -81,6 +81,7 @@ unix {
 }
 
 DISTFILES += \
+    dependencies.cfg \
     roon.json.in \
     version.txt.in \
     README.md
