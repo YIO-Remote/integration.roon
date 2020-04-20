@@ -68,14 +68,14 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
                      YioAPIInterface* api, ConfigInterface* configObj, Plugin* plugin);
     ~YioRoon() override;
 
-    Q_INVOKABLE void connect() override;
-    Q_INVOKABLE void disconnect() override;
-    Q_INVOKABLE void enterStandby() override;
-    Q_INVOKABLE void leaveStandby() override;
-    Q_INVOKABLE void sendCommand(const QString& type, const QString& entityId, int command,
-                                 const QVariant& param) override;
+    void sendCommand(const QString& type, const QString& entityId, int command, const QVariant& param) override;
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
+    void connect() override;
+    void disconnect() override;
+    void enterStandby() override;
+    void leaveStandby() override;
+
     void onZonesChanged();
     void onZoneSeekChanged(const QtRoonTransportApi::Zone& zone);
     void onError(const QString& error);
