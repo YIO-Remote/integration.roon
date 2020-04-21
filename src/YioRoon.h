@@ -29,7 +29,6 @@
 #include "QtRoonBrowseApi.h"
 #include "QtRoonDiscovery.h"
 #include "QtRoonTransportApi.h"
-
 #include "yio-interface/entities/entityinterface.h"
 #include "yio-interface/notificationsinterface.h"
 #include "yio-interface/plugininterface.h"
@@ -69,28 +68,28 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
                      YioAPIInterface* api, ConfigInterface* configObj, Plugin* plugin);
     ~YioRoon() override;
 
-    Q_INVOKABLE void connect() override;
-    Q_INVOKABLE void disconnect() override;
-    Q_INVOKABLE void enterStandby() override;
-    Q_INVOKABLE void leaveStandby() override;
-    Q_INVOKABLE void sendCommand(const QString& type, const QString& entity_id, int command,
-                                 const QVariant& param) override;
+    void sendCommand(const QString& type, const QString& entityId, int command, const QVariant& param) override;
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
+    void connect() override;
+    void disconnect() override;
+    void enterStandby() override;
+    void leaveStandby() override;
+
     void onZonesChanged();
     void onZoneSeekChanged(const QtRoonTransportApi::Zone& zone);
     void onError(const QString& error);
 
  private:
     enum EAction {
-        ACT_NONE = 0,
-        ACT_PLAYNOW = 0x0001,
-        ACT_PLAYFROM = 0x0002,
-        ACT_SHUFFLE = 0x0004,
-        ACT_ADDNEXT = 0x0008,
-        ACT_QUEUE = 0x0010,
+        ACT_NONE       = 0,
+        ACT_PLAYNOW    = 0x0001,
+        ACT_PLAYFROM   = 0x0002,
+        ACT_SHUFFLE    = 0x0004,
+        ACT_ADDNEXT    = 0x0008,
+        ACT_QUEUE      = 0x0010,
         ACT_STARTRADIO = 0x0020,
-        ACT_REJECT = 0x0100,
+        ACT_REJECT     = 0x0100,
         ACT_ACTIONLIST = 0x0200
     };
 
