@@ -81,7 +81,7 @@ YioRoon* YioRoon::_instance = nullptr;
 YioRoon::YioRoon(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
                  YioAPIInterface* api, ConfigInterface* configObj, Plugin* plugin)
     : Integration(config, entities, notifications, api, configObj, plugin),
-      _roonApi("ws://192.168.1.100:9100/api", "", _reg, m_logCategory),
+      _roonApi("", "", _reg, m_logCategory),
       _browseApi(_roonApi, this),
       _transportApi(_roonApi, transportCallback),
       _subscriptionKey(-1),
@@ -130,8 +130,9 @@ YioRoon::YioRoon(const QVariantMap& config, EntitiesInterface* entities, Notific
     _instance = this;
 
     for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
-        if (iter.key() == "ip") {
-            QString ip = iter.value().toString();
+        if (iter.key() == Integration::OBJ_DATA) {
+            QVariantMap map = iter.value().toMap();
+            QString ip = map.value(Integration::KEY_DATA_IP).toString();
             if (!ip.contains(':')) {
                 ip += ":9100";
             }

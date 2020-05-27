@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org",
+    "$id": "http://yio-remote.com/yioroon.json",
+    "type": "object",
+    "title": "YIO Roon Integration Schema",
+    "description": "Required data points to set up a YIO Roon integration.",
+    "default": {},
+    "additionalProperties": true,
+    "required": [
+        "ip"
+    ],
+    "properties": {
+        "ip": {
+            "$id": "#/properties/ip",
+            "type": "string",
+            "title": "IP address or hostname",
+            "description": "The IP address or hostname of your Roon Core.",
+            "default": "",
+            "examples": [
+                "192.168.1.100"
+            ]
+        }
+    }
+}
