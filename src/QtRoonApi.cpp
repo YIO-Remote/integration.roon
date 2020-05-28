@@ -100,15 +100,13 @@ QtRoonApi::QtRoonApi(const QString& url, const QString& directory, RoonRegister&
     //_webSocket.ignoreSslErrors();
     //connect(&_webSocket, &QWebSocket::error, this, &QtRoonApi::onError);  not working
     QObject::connect(&_webSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
-
-    //loadState();
 }
-void QtRoonApi::setup(const QString& url, const QString& directory)
+void QtRoonApi::setup(const QString& url, const QVariantMap& config)
 {
     _url = url;
-    _directory = directory;
 
-    loadState();
+    _roonState.tokens = config["tokens"].toMap();
+    _roonState.paired_core_id = config["paired_core_id"].toString();
 }
 void QtRoonApi::open() {
     _webSocket.open(_url);
@@ -227,7 +225,7 @@ void QtRoonApi::onPairing (const ReceivedContent& content)
         if (_register.paired != nullptr)
             _register.paired->OnPaired(_roonCore);
         emit paired();
-        saveState();
+        emit stateChanged(getState());
     }
     else if (content._command == "/unsubscribe_pairing") {
         _subscriptions.remove(key);
@@ -237,7 +235,7 @@ void QtRoonApi::onPairing (const ReceivedContent& content)
         if (_register.paired != nullptr)
             _register.paired->OnUnpaired(_roonCore);
         emit unpaired();
-        saveState();
+        emit stateChanged(getState());
     }
 }
 
@@ -280,7 +278,7 @@ void QtRoonApi::OnReceived(const ReceivedContent& content)
             _roonState.tokens.remove(_roonCore.core_id);
         QVariant providedServices = map["provided_services"];
         QVariant httpPort = map["http_port"];
-        saveState();
+        emit stateChanged(getState());
     }
     else {
         // Info
@@ -349,35 +347,11 @@ bool QtRoonApi::parseReveived(const QByteArray& data, ReceivedContent& content)
     }
     return true;
 }
-bool QtRoonApi::saveState() {
+const QVariantMap QtRoonApi::getState() {
     QVariantMap map;
     map["tokens"] = QVariant(_roonState.tokens);
     map["paired_core_id"] = _roonState.paired_core_id;
-    QJsonDocument doc = QJsonDocument::fromVariant(map);
-    QString json(doc.toJson(QJsonDocument::JsonFormat::Compact));
-    QFile file(_directory + "/roonState.json");
-
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        qCWarning(_log) << "saveState can't create " << file.fileName();
-        return false;
-    }
-    file.write(doc.toJson(QJsonDocument::JsonFormat::Compact));
-    file.close();
-    return true;
-}
-bool QtRoonApi::loadState() {
-    QFile	file(_directory + "/roonState.json");
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qCWarning(_log) << "loadState can't open " << file.fileName();
-        return false;
-    }
-    QByteArray data = file.readAll();
-    file.close();
-    QJsonDocument document = QJsonDocument::fromJson(data);
-    QVariantMap map = document.toVariant().toMap();
-    _roonState.tokens = map["tokens"].toMap();
-    _roonState.paired_core_id = map["paired_core_id"].toString();
-    return true;
+    return map;
 }
 
 

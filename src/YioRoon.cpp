@@ -127,29 +127,45 @@ YioRoon::YioRoon(const QVariantMap& config, EntitiesInterface* entities, Notific
     QObject::connect(&_transportApi, &QtRoonTransportApi::zonesChanged, this, &YioRoon::onZonesChanged);
     QObject::connect(&_transportApi, &QtRoonTransportApi::zoneSeekChanged, this, &YioRoon::onZoneSeekChanged);
     QObject::connect(&_roonApi, &QtRoonApi::error, this, &YioRoon::onError);
+    QObject::connect(&_roonApi, &QtRoonApi::stateChanged, this, &YioRoon::storeState);
     _instance = this;
 
+
+    QVariantMap roonConfig;
     for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
         if (iter.key() == Integration::OBJ_DATA) {
             QVariantMap map = iter.value().toMap();
+
             QString ip = map.value(Integration::KEY_DATA_IP).toString();
             if (!ip.contains(':')) {
                 ip += ":9100";
             }
             _url      = "ws://" + ip + "/api";
             _imageUrl = "http://" + ip + "/api/image/";
+
+            roonConfig = map.value("state").toMap();
         }
     }
-    QString configPath = configObj->getSettings().value("configPath").toString() + "/roon";
-    if (!QDir(configPath).exists()) {
-        if (!QDir().mkdir(configPath)) {
-            configPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
-            qCCritical(m_logCategory)
-                << "Invalid configuration path, using system temp directory to persist state information:"
-                << configPath;
+
+    if (roonConfig.isEmpty()) {
+        // For Compatibility reason, read the old state file
+        // TODO: Remove in  the future
+        _configPath = configObj->getSettings().value("configPath").toString() + "/roon";
+        if (QDir(_configPath).exists()) {
+            QFile file(_configPath + "/roonState.json");
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                qCWarning(m_logCategory) << "loadState can't open " << file.fileName();
+            } else {
+                QByteArray data = file.readAll();
+                file.close();
+                QJsonDocument document = QJsonDocument::fromJson(data);
+                roonConfig = document.toVariant().toMap();
+
+                storeState(roonConfig);
+            }
         }
     }
-    _roonApi.setup(_url, configPath);
+    _roonApi.setup(_url, roonConfig);
 }
 
 YioRoon::~YioRoon() {
@@ -964,4 +980,28 @@ int YioRoon::findItemIndex(const QList<QtRoonBrowseApi::BrowseItem>& items, cons
             return i;
     }
     return -1;
+}
+
+void YioRoon::storeState(const QVariantMap& stateMap) {
+    QVariantMap config = m_config->getConfig();
+
+    QVariantMap integrations  = config.value("integrations").toMap();
+    QVariantMap roon = integrations.value("roon").toMap();
+    QVariantList data = roon.value(Integration::OBJ_DATA).toList();
+    QVariantList newData;
+    for (QVariantList::const_iterator iter = data.begin(); iter != data.end(); ++iter) {
+        QVariantMap integration = iter->toMap();
+        if (integration.value(Integration::KEY_ID) == integrationId()) {
+            QVariantMap data_data = integration.value(Integration::OBJ_DATA).toMap();
+            data_data["state"] = stateMap;
+            integration.insert(Integration::OBJ_DATA, data_data);
+        }
+        newData.append(integration);
+    }
+
+    roon.insert(Integration::OBJ_DATA, newData);
+    integrations.insert("roon", roon);
+    config.insert("integrations", integrations);
+
+    m_config->setConfig(config);
 }
