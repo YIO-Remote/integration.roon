@@ -14,10 +14,10 @@
             "$id": "#/properties/ip",
             "type": "string",
             "title": "IP address or hostname",
-            "description": "The IP address or hostname of your Roon Core.",
+            "description": "The IP address or hostname of your Roon Core. Optional: the port.",
             "default": "",
             "examples": [
-                "192.168.1.100"
+                "192.168.1.100", "192.168.1.100:9100"
             ]
         }
     }
