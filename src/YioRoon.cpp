@@ -388,6 +388,17 @@ void YioRoon::onZonesChanged() {
     }
 
     QMap<QString, QtRoonTransportApi::Zone>& zones = _transportApi.zones();
+    for (QMap<QString, QtRoonTransportApi::Zone>::iterator i = zones.begin(); i != zones.end(); ++i) {
+        const QtRoonTransportApi::Zone& zone = i.value();
+
+        QStringList supportedFeatures;
+        addAvailableEntity(
+            zone.zone_id,
+            "media_player",
+            integrationId(),
+            zone.display_name,
+            supportedFeatures);
+    }
 
     for (QMap<QString, QtRoonTransportApi::Zone>::iterator i = zones.begin(); i != zones.end(); ++i) {
         const QtRoonTransportApi::Zone& zone = i.value();
