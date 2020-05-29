@@ -157,6 +157,7 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     QStringList                         _notFound;
     bool                                _cmdsForItem;
     BrowseModel                         _model;
+    QString                             _configPath;
     static YioRoon*                     _instance;
 
     static void transportCallback(int requestId, const QString& msg);
@@ -188,4 +189,6 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     const Action* getActionYio(const QString& yioName);
     const Action* getActionParentTitle(const QString& parentTitle);
     int           findItemIndex(const QList<QtRoonBrowseApi::BrowseItem>& items, const QString& itemKey);
+
+    void storeState(const QVariantMap& stateMap);
 };

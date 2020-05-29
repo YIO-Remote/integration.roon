@@ -81,7 +81,7 @@ class QtRoonApi : public QObject, IRoonCallback
 	Q_OBJECT
 public:
     explicit		QtRoonApi		(const QString& url, const QString& directory, RoonRegister& reg, QLoggingCategory& log, QObject* parent = nullptr);
-    void		setup			(const QString& url, const QString& directory);
+    void		setup			(const QString& url, const QVariantMap& config);
     void		open			();
     void		close			();
     void		send			(const QString& path, int requestId, const QString* body = nullptr);
@@ -119,6 +119,7 @@ signals:
     void		error                   (QString err);
     void		paired                  ();
     void		unpaired                ();
+    void        stateChanged            (const QVariantMap& stateMap);
 
 public slots:
     void		onConnected             ();
@@ -139,8 +140,7 @@ private:
     void		getRegistrationInfo     ();
     bool		setCallback             (int requestId, IRoonCallback* callback);
     bool		parseReveived           (const QByteArray& data, ReceivedContent&  content);
-    bool		saveState               ();
-    bool		loadState               ();
+    const QVariantMap   getState    ();
 
     RoonRegister&                   _register;
     RoonCore                        _roonCore;
