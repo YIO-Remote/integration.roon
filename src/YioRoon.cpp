@@ -29,33 +29,11 @@
 
 RoonPlugin::RoonPlugin() : Plugin("roon", NO_WORKER_THREAD), _discovery(m_logCategory) {}
 
-void RoonPlugin::create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
+Integration* RoonPlugin::createIntegration(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
                         YioAPIInterface* api, ConfigInterface* configObj) {
     qCInfo(m_logCategory) << "Creating Roon integration plugin" << PLUGIN_VERSION;
 
-    QMap<QObject*, QVariant> returnData;
-    QVariantList             data;
-
-    for (QVariantMap::const_iterator iter = config.begin(); iter != config.end(); ++iter) {
-        if (iter.key() == Integration::OBJ_DATA) {
-            data = iter.value().toList();
-            break;
-        }
-    }
-    for (int i = 0; i < data.length(); i++) {
-        YioRoon* roon = new YioRoon(data[i].toMap(), entities, notifications, api, configObj, this);
-
-        QVariantMap d = data[i].toMap();
-        d.insert(Integration::KEY_TYPE, config.value(Integration::KEY_TYPE).toString());
-        returnData.insert(roon, d);
-    }
-
-    if (data.length() > 0) {
-        emit createDone(returnData);
-    } else {
-        connect(&_discovery, &QtRoonDiscovery::roonDiscovered, this, &RoonPlugin::onRoonDiscovered);
-        _discovery.startDiscovery(1000, true);
-    }
+    return new YioRoon(config, entities, notifications, api, configObj, this);
 }
 
 void RoonPlugin::onRoonDiscovered(QMap<QString, QVariantMap> soodmaps) {
@@ -166,6 +144,9 @@ YioRoon::YioRoon(const QVariantMap& config, EntitiesInterface* entities, Notific
         }
     }
     _roonApi.setup(_url, roonConfig);
+
+    setState(CONNECTING);
+    _roonApi.open();
 }
 
 YioRoon::~YioRoon() {

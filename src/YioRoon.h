@@ -49,9 +49,10 @@ class RoonPlugin : public Plugin {
     RoonPlugin();
 
     // Plugin interface
- public:
-    void create(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
-                YioAPIInterface* api, ConfigInterface* configObj) override;
+ protected:
+    Integration* createIntegration(const QVariantMap& config, EntitiesInterface* entities,
+                                   NotificationsInterface* notifications, YioAPIInterface* api,
+                                   ConfigInterface* configObj) override;
 
  public slots:  // NOLINT open issue: https://github.com/cpplint/cpplint/pull/99
     void onRoonDiscovered(QMap<QString, QVariantMap>);
