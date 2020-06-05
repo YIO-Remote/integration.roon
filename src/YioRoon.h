@@ -113,7 +113,7 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
         EAction forcedActions;
         EAction forcedChildActions;
     };
-    enum BrowseMode { BROWSE, PLAY, ACTION, GOTOPATH, GETALBUM };
+    enum BrowseMode { BROWSE, PLAY, ACTION, GOTOSEARCH, GOTOLIST, GETALBUM, GETLIST };
 
     struct YioContext : QtRoonBrowseApi::Context {
         YioContext() : goBack(0) {}
@@ -138,8 +138,10 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
         QStringList            goToPath;
         QString                searchText;
         SearchModel*           searchModel;
+        BrowseModel*           browseModel;
         QStringList            searchKeys;
         QMap<QString, QString> albumMap;
+        QMap<QString, QString> listMap;
         int                    goBack;
     };
 
@@ -171,6 +173,7 @@ class YioRoon : public Integration, IRoonPaired, QtRoonBrowseApi::ICallback {
     void        search(YioContext& ctx, const QString& searchText, const QString& itemKey);
     void        search(YioContext& ctx, const QString& searchText);
     void        getAlbum(YioContext& ctx, const QString& itemKey);
+    void        playList(YioContext& ctx, const QString& param);
 
     void OnPaired(const RoonCore& core) override;
     void OnUnpaired(const RoonCore& core) override;
