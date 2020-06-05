@@ -41,8 +41,7 @@ void RoonRegister::toVariant(QVariantMap & map) const {
     map["token"] = token;
     map["website"] = website;
 }
-void RoonRegister::toJson(QString& json) const
-{
+void RoonRegister::toJson(QString& json) const {
     QVariantMap map;
     toVariant(map);
     QJsonDocument doc = QJsonDocument::fromVariant(map);
@@ -50,22 +49,22 @@ void RoonRegister::toJson(QString& json) const
 }
 
 void RoonCore::fromVariant(const QVariantMap& map) {
-    for (auto e : map.keys())
-    {
+    for (auto e : map.keys()) {
         QVariant var = map.value(e);
-        if (e == "core_id")
+        if (e == "core_id") {
             core_id = var.toString();
-        else if (e == "display_name")
+        } else if (e == "display_name") {
             display_name = var.toString();
-        else if (e == "display_version")
+        } else if (e == "display_version") {
             display_version = var.toString();
+        }
     }
 }
 
 QT_USE_NAMESPACE
 
 QString QtRoonApi::ServiceRegistry  = "com.roonlabs.registry:1";
-QString QtRoonApi::ServiceTransport = "com.roonlabs.transport:2";		// support for zones_seek_changed
+QString QtRoonApi::ServiceTransport = "com.roonlabs.transport:2";            // support for zones_seek_changed
 QString QtRoonApi::ServiceStatus    = "com.roonlabs.status:1";
 QString QtRoonApi::ServicePairing   = "com.roonlabs.pairing:1";
 QString QtRoonApi::ServicePing      = "com.roonlabs.ping:1";
@@ -84,27 +83,25 @@ QString QtRoonApi::Subscribed       = "Subscribed";
 QString QtRoonApi::Unsubscribed     = "Unsubscribed";
 QString QtRoonApi::Changed          = "Changed";
 
-QtRoonApi::QtRoonApi(const QString& url, const QString& directory, RoonRegister& reg, QLoggingCategory& log, QObject* parent) :
+QtRoonApi::QtRoonApi(const QString& url, const QString& directory, RoonRegister& reg, QLoggingCategory& log,
+                     QObject* parent) :
     QObject(parent),
     _register(reg),
     _url(url),
     _directory(directory),
     _requestId(0),
     _paired(false),
-    _log(log)
-{
+    _log(log) {
     connect(&_webSocket, &QWebSocket::connected, this, &QtRoonApi::onConnected);
     connect(&_webSocket, &QWebSocket::disconnected, this, &QtRoonApi::onDisconnected);
     connect(&_webSocket, &QWebSocket::stateChanged, this, &QtRoonApi::onStateChanged);
     connect(&_webSocket, &QWebSocket::binaryMessageReceived, this, &QtRoonApi::onBinaryMessageReceived);
-    //_webSocket.ignoreSslErrors();
-    //connect(&_webSocket, &QWebSocket::error, this, &QtRoonApi::onError);  not working
+    // _webSocket.ignoreSslErrors();
+    // connect(&_webSocket, &QWebSocket::error, this, &QtRoonApi::onError);  not working
     QObject::connect(&_webSocket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(onError(QAbstractSocket::SocketError)));
 }
-void QtRoonApi::setup(const QString& url, const QVariantMap& config)
-{
+void QtRoonApi::setup(const QString& url, const QVariantMap& config) {
     _url = url;
-
     _roonState.tokens = config["tokens"].toMap();
     _roonState.paired_core_id = config["paired_core_id"].toString();
 }
@@ -114,13 +111,11 @@ void QtRoonApi::open() {
 void QtRoonApi::close() {
     _webSocket.close();
 }
-void QtRoonApi::addService(const QString& serviceName, IRoonCallback* service)
-{
+void QtRoonApi::addService(const QString& serviceName, IRoonCallback* service) {
     _services.insert(serviceName, service);
     _register.provided_services.append(serviceName);
 }
-int QtRoonApi::sendSubscription(const QString& path, IRoonCallback* callback, int subscriptionKey)
-{
+int QtRoonApi::sendSubscription(const QString& path, IRoonCallback* callback, int subscriptionKey) {
     QVariantMap map;
     if (subscriptionKey < 0)
         subscriptionKey = _requests.count();
@@ -141,10 +136,12 @@ int QtRoonApi::send(const QString& path, IRoonCallback* callback, const QString*
 void QtRoonApi::send(const QString& command, int requestId, const QString* body) {
     QString data;
     QString contentType = "application/json";
-    if (body == nullptr)
+    if (body == nullptr) {
         data = QString("MOO/1 REQUEST %1\nRequest-Id: %2\n\n").arg (command, QString::number(requestId));
-    else
-        data = QString("MOO/1 REQUEST %1\nRequest-Id: %2\nContent-Length: %3\nContent-Type: %4\n\n%5").arg (command, QString::number(requestId), QString::number(body->length()), contentType, QString(*body));
+    } else {
+        data = QString("MOO/1 REQUEST %1\nRequest-Id: %2\nContent-Length: %3\nContent-Type: %4\n\n%5").
+                arg(command, QString::number(requestId), QString::number(body->length()), contentType, QString(*body));
+    }
     _webSocket.sendBinaryMessage(data.toUtf8());
     if (_log.isDebugEnabled())
         qCDebug(_log) << "send : " << command << " " << requestId << " " << (body != nullptr ? *body : "");
@@ -158,12 +155,12 @@ void QtRoonApi::reply(const QString& command, int requestId, bool cont, QString*
     else
         data = QString("MOO/1 %1 %2\nRequest-Id: %3\nContent-Length: %4\nContent-Type: %5\n\n%6").arg(mode, command, QString::number(requestId), QString::number(body->length()), contentType, QString(*body));
     _webSocket.sendBinaryMessage(data.toUtf8());
-    if (_log.isDebugEnabled())
+    if (_log.isDebugEnabled()) {
         qCDebug(_log) << "reply : " << command << " " << requestId << " " << (body != nullptr ? *body : "");
+    }
 }
 void QtRoonApi::replyAll(QMap<int, int> subscriptions, const QString& command, QString* body) {
-    for (auto e : subscriptions.keys())
-    {
+    for (auto e : subscriptions.keys()) {
         int requestId = subscriptions.value(e);
         reply(command, requestId, true, body);
     }
@@ -185,31 +182,29 @@ void QtRoonApi::onBinaryMessageReceived(const QByteArray& message) {
         if (content._messageType == MessageRequest) {
             if (content._service == ServicePing) {
                 this->reply(Success, content._requestId, false, nullptr);
-            }
-            else if (content._service == ServicePairing) {
+            } else if (content._service == ServicePairing) {
                 onPairing (content);
-            }
-            else {
+            } else {
                 cb = _services.value(content._service, nullptr);
-                if (cb != nullptr)
+                if (cb != nullptr) {
                     cb->OnReceived(content);
+                }
             }
-        }
-        else if (content._messageType == MessageComplete) {
+        } else if (content._messageType == MessageComplete) {
             cb = _requests.value(content._requestId, nullptr);
-            if (cb != nullptr)
+            if (cb != nullptr) {
                 cb->OnReceived(content);
+            }
             _requests.remove(content._requestId);
-        }
-        else if (content._messageType == MessageContinue) {
+        } else if (content._messageType == MessageContinue) {
             cb = _requests.value(content._requestId, nullptr);
-            if (cb != nullptr)
+            if (cb != nullptr) {
                 cb->OnReceived(content);
+            }
         }
     }
 }
-void QtRoonApi::onPairing (const ReceivedContent& content)
-{
+void QtRoonApi::onPairing(const ReceivedContent& content) {
     QJsonDocument document = QJsonDocument::fromJson(content._body.toUtf8());
     QVariantMap map = document.toVariant().toMap();
     int key = map["subscription_key"].toInt();
