@@ -4,5 +4,11 @@
 
 # YIO Roon Repository
 
-For details about the YIO Roon Integration, please visit our documentation repository which can be found under
-<https://github.com/YIO-Remote/documentation/wiki>.
+## Maintainer wanted
+
+❗ **This integration is currently unmaintained** ❗
+
+The original author left the project and the remaining development team doesn't have a Roon setup.
+We are trying to keep the current plugin running as long as the YIO integration API permits, but things will most likely break in the future. There will be no new features or fixes.
+
+Please contact us on GitHub, [YIO forum](https://community.yio-remote.com/) or [Discord](http://chat.yio-remote.com/) if you'd like to help out!
