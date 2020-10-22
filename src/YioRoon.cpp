@@ -27,7 +27,7 @@
 #include "yio-interface/configinterface.h"
 #include "yio-interface/entities/mediaplayerinterface.h"
 
-RoonPlugin::RoonPlugin() : Plugin("roon", NO_WORKER_THREAD), _discovery(m_logCategory) {}
+RoonPlugin::RoonPlugin() : Plugin("yio.plugin.roon", NO_WORKER_THREAD), _discovery(m_logCategory) {}
 
 Integration* RoonPlugin::createIntegration(const QVariantMap& config, EntitiesInterface* entities, NotificationsInterface* notifications,
                         YioAPIInterface* api, ConfigInterface* configObj) {
